@@ -104,22 +104,38 @@ List tools accept `filter`, `limit` (default 100, max 500), and `offset` paramet
 
 ## Prerequisites
 
-- Go 1.24 or later
 - An [OpenZiti](https://openziti.io) controller reachable from the machine running the MCP server
 
 ---
 
 ## Installation
 
-**From source:**
+### Download a release
+
+Pre-built binaries for macOS, Linux, and Windows are available on the [GitHub Releases page](https://github.com/smilindave26/mcp-ziti/releases).
+
+1. Download the archive for your platform from the [latest release](https://github.com/smilindave26/mcp-ziti/releases/latest).
+2. Extract the `ziti-mcp` binary and place it somewhere on your PATH (e.g. `/usr/local/bin`).
 
 ```bash
-git clone https://github.com/netfoundry/mcp-ziti-golang.git
-cd mcp-ziti-golang
-go build -o mcp-ziti .
+# Example: macOS Apple Silicon
+curl -sL https://github.com/smilindave26/mcp-ziti/releases/latest/download/ziti-mcp_$(curl -sL https://api.github.com/repos/smilindave26/mcp-ziti/releases/latest | grep tag_name | cut -d'"' -f4 | sed 's/^v//')_darwin_arm64.tar.gz | tar xz
+sudo mv ziti-mcp /usr/local/bin/
 ```
 
-The resulting `mcp-ziti` binary is a single self-contained executable with no runtime dependencies.
+A rolling **Development Build** pre-release with the latest binaries from `main` is also available for testing.
+
+### From source
+
+Requires Go 1.24 or later.
+
+```bash
+git clone https://github.com/smilindave26/mcp-ziti.git
+cd mcp-ziti-golang
+go build -o ziti-mcp .
+```
+
+The resulting `ziti-mcp` binary is a single self-contained executable with no runtime dependencies.
 
 ---
 
@@ -140,16 +156,16 @@ A Ziti identity file contains the controller URL, client certificate, and CA bun
 
 ```bash
 # The controller URL is read from the ztAPI field inside the file
-mcp-ziti --identity-file /path/to/identity.json
+ziti-mcp --identity-file /path/to/identity.json
 
 # Override the controller URL if needed
-mcp-ziti --identity-file /path/to/identity.json \
+ziti-mcp --identity-file /path/to/identity.json \
           --controller https://ctrl.example.com:1280
 ```
 
 Environment variables:
 ```bash
-ZITI_IDENTITY_FILE=/path/to/identity.json mcp-ziti
+ZITI_IDENTITY_FILE=/path/to/identity.json ziti-mcp
 ```
 
 ### Username / password
@@ -157,7 +173,7 @@ ZITI_IDENTITY_FILE=/path/to/identity.json mcp-ziti
 Authenticates with the controller's built-in user database (updb). Requires `--controller`.
 
 ```bash
-mcp-ziti --controller https://ctrl.example.com:1280 \
+ziti-mcp --controller https://ctrl.example.com:1280 \
           --username admin \
           --password secret
 ```
@@ -167,7 +183,7 @@ Environment variables:
 ZITI_CONTROLLER_URL=https://ctrl.example.com:1280 \
 ZITI_USERNAME=admin \
 ZITI_PASSWORD=secret \
-mcp-ziti
+ziti-mcp
 ```
 
 ### Client certificate
@@ -175,7 +191,7 @@ mcp-ziti
 Authenticates using a TLS client certificate and private key. Requires `--controller`.
 
 ```bash
-mcp-ziti --controller https://ctrl.example.com:1280 \
+ziti-mcp --controller https://ctrl.example.com:1280 \
           --cert /path/to/client.crt \
           --key  /path/to/client.key
 ```
@@ -185,7 +201,7 @@ Environment variables:
 ZITI_CONTROLLER_URL=https://ctrl.example.com:1280 \
 ZITI_CERT_FILE=/path/to/client.crt \
 ZITI_KEY_FILE=/path/to/client.key \
-mcp-ziti
+ziti-mcp
 ```
 
 ### External JWT (static token)
@@ -195,14 +211,14 @@ Authenticates using a pre-issued JWT — for example a service account token fro
 Provide the token directly as a string:
 
 ```bash
-mcp-ziti --controller https://ctrl.example.com:1280 \
+ziti-mcp --controller https://ctrl.example.com:1280 \
           --ext-jwt-token eyJhbGciOiJSUzI1NiJ9...
 ```
 
 Or point to a file containing the token (useful for Kubernetes-mounted secrets):
 
 ```bash
-mcp-ziti --controller https://ctrl.example.com:1280 \
+ziti-mcp --controller https://ctrl.example.com:1280 \
           --ext-jwt-file /var/run/secrets/token.jwt
 ```
 
@@ -210,7 +226,7 @@ Environment variables:
 ```bash
 ZITI_CONTROLLER_URL=https://ctrl.example.com:1280 \
 ZITI_EXT_JWT_TOKEN=eyJhbGciOiJSUzI1NiJ9... \
-mcp-ziti
+ziti-mcp
 ```
 
 ### OIDC client credentials
@@ -218,7 +234,7 @@ mcp-ziti
 Authenticates using the [OAuth 2.0 client credentials flow](https://datatracker.ietf.org/doc/html/rfc6749#section-4.4). A fresh token is fetched from the IdP on each session, so no manual token rotation is needed. Requires `--controller` and `--oidc-issuer`.
 
 ```bash
-mcp-ziti --controller https://ctrl.example.com:1280 \
+ziti-mcp --controller https://ctrl.example.com:1280 \
           --oidc-issuer https://idp.example.com \
           --oidc-client-id my-client \
           --oidc-client-secret my-secret
@@ -228,10 +244,10 @@ Optional extras:
 
 ```bash
 # Restrict the token audience
-mcp-ziti ... --oidc-audience https://ctrl.example.com
+ziti-mcp ... --oidc-audience https://ctrl.example.com
 
 # Skip OIDC discovery and use a known token endpoint directly
-mcp-ziti ... --oidc-token-url https://idp.example.com/oauth/token
+ziti-mcp ... --oidc-token-url https://idp.example.com/oauth/token
 ```
 
 Environment variables:
@@ -240,7 +256,7 @@ ZITI_CONTROLLER_URL=https://ctrl.example.com:1280 \
 ZITI_OIDC_ISSUER=https://idp.example.com \
 ZITI_OIDC_CLIENT_ID=my-client \
 ZITI_OIDC_CLIENT_SECRET=my-secret \
-mcp-ziti
+ziti-mcp
 ```
 
 ### Optional CA override
@@ -248,7 +264,7 @@ mcp-ziti
 By default the server fetches the controller's CA bundle from its well-known endpoint. To use a custom CA instead, add `--ca` (or `ZITI_CA_FILE`) to any of the methods above:
 
 ```bash
-mcp-ziti --controller https://ctrl.example.com:1280 \
+ziti-mcp --controller https://ctrl.example.com:1280 \
           --username admin --password secret \
           --ca /path/to/ca-bundle.pem
 ```
@@ -265,7 +281,7 @@ You can also start the server **with no credentials at all** — the agent can t
 {
   "mcpServers": {
     "ziti": {
-      "command": "/usr/local/bin/mcp-ziti"
+      "command": "/usr/local/bin/ziti-mcp"
     }
   }
 }
@@ -280,7 +296,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 {
   "mcpServers": {
     "ziti": {
-      "command": "/usr/local/bin/mcp-ziti",
+      "command": "/usr/local/bin/ziti-mcp",
       "args": ["--identity-file", "/path/to/identity.json"]
     }
   }
@@ -292,7 +308,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 {
   "mcpServers": {
     "ziti": {
-      "command": "/usr/local/bin/mcp-ziti",
+      "command": "/usr/local/bin/ziti-mcp",
       "args": [
         "--controller", "https://ctrl.example.com:1280",
         "--username", "admin",
@@ -308,7 +324,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 {
   "mcpServers": {
     "ziti": {
-      "command": "/usr/local/bin/mcp-ziti",
+      "command": "/usr/local/bin/ziti-mcp",
       "args": [
         "--controller", "https://ctrl.example.com:1280",
         "--cert", "/path/to/client.crt",
@@ -324,7 +340,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 {
   "mcpServers": {
     "ziti": {
-      "command": "/usr/local/bin/mcp-ziti",
+      "command": "/usr/local/bin/ziti-mcp",
       "env": {
         "ZITI_CONTROLLER_URL": "https://ctrl.example.com:1280",
         "ZITI_USERNAME": "admin",
@@ -344,7 +360,7 @@ Edit `.cursor/mcp.json` in your project root, or `~/.cursor/mcp.json` for a glob
 {
   "mcpServers": {
     "ziti": {
-      "command": "/usr/local/bin/mcp-ziti",
+      "command": "/usr/local/bin/ziti-mcp",
       "args": ["--identity-file", "/path/to/identity.json"]
     }
   }
@@ -356,7 +372,7 @@ Edit `.cursor/mcp.json` in your project root, or `~/.cursor/mcp.json` for a glob
 {
   "mcpServers": {
     "ziti": {
-      "command": "/usr/local/bin/mcp-ziti",
+      "command": "/usr/local/bin/ziti-mcp",
       "args": [
         "--controller", "https://ctrl.example.com:1280",
         "--username", "admin",
@@ -372,7 +388,7 @@ Edit `.cursor/mcp.json` in your project root, or `~/.cursor/mcp.json` for a glob
 {
   "mcpServers": {
     "ziti": {
-      "command": "/usr/local/bin/mcp-ziti",
+      "command": "/usr/local/bin/ziti-mcp",
       "args": [
         "--controller", "https://ctrl.example.com:1280",
         "--cert", "/path/to/client.crt",
@@ -393,7 +409,7 @@ Add to your `.vscode/mcp.json` or user `settings.json` under `"mcp"`:
   "servers": {
     "ziti": {
       "type": "stdio",
-      "command": "/usr/local/bin/mcp-ziti",
+      "command": "/usr/local/bin/ziti-mcp",
       "args": ["--identity-file", "/path/to/identity.json"]
     }
   }
@@ -406,7 +422,7 @@ Add to your `.vscode/mcp.json` or user `settings.json` under `"mcp"`:
   "servers": {
     "ziti": {
       "type": "stdio",
-      "command": "/usr/local/bin/mcp-ziti",
+      "command": "/usr/local/bin/ziti-mcp",
       "args": [
         "--controller", "https://ctrl.example.com:1280",
         "--username", "admin",
@@ -423,7 +439,7 @@ Add to your `.vscode/mcp.json` or user `settings.json` under `"mcp"`:
   "servers": {
     "ziti": {
       "type": "stdio",
-      "command": "/usr/local/bin/mcp-ziti",
+      "command": "/usr/local/bin/ziti-mcp",
       "args": [
         "--controller", "https://ctrl.example.com:1280",
         "--cert", "/path/to/client.crt",
@@ -443,7 +459,7 @@ Add to your project's `.claude/settings.json` or `~/.claude/settings.json`:
 {
   "mcpServers": {
     "ziti": {
-      "command": "/usr/local/bin/mcp-ziti",
+      "command": "/usr/local/bin/ziti-mcp",
       "args": ["--identity-file", "/path/to/identity.json"]
     }
   }
@@ -455,7 +471,7 @@ Add to your project's `.claude/settings.json` or `~/.claude/settings.json`:
 {
   "mcpServers": {
     "ziti": {
-      "command": "/usr/local/bin/mcp-ziti",
+      "command": "/usr/local/bin/ziti-mcp",
       "args": [
         "--controller", "https://ctrl.example.com:1280",
         "--username", "admin",
@@ -497,7 +513,7 @@ Add to your project's `.claude/settings.json` or `~/.claude/settings.json`:
 go build ./...
 
 # Build to an explicit output path
-go build -o mcp-ziti .
+go build -o ziti-mcp .
 ```
 
 ### Unit tests
