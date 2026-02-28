@@ -33,10 +33,11 @@ func registerConnectionTools(s *mcp.Server, zc *ziticlient.Client) {
 type connectionTools struct{ zc *ziticlient.Client }
 
 type connectControllerInput struct {
-	ControllerURL string `json:"controllerUrl,omitempty" jsonschema:"controller URL, e.g. https://ctrl.example.com:1280 — required unless using identityJson"`
+	ControllerURL string `json:"controllerUrl,omitempty" jsonschema:"controller URL, e.g. https://ctrl.example.com:1280 — required unless using identityFile or identityJson"`
 
-	// Identity file auth (inline JSON content)
-	IdentityJSON string `json:"identityJson,omitempty" jsonschema:"inline Ziti identity JSON content"`
+	// Identity file auth — prefer identityFile (path) over identityJson (inline content)
+	IdentityFile string `json:"identityFile,omitempty" jsonschema:"path to a Ziti identity JSON file on disk (preferred over identityJson)"`
+	IdentityJSON string `json:"identityJson,omitempty" jsonschema:"inline Ziti identity JSON content — only use if identityFile is not available"`
 
 	// Username/password auth
 	Username string `json:"username,omitempty" jsonschema:"username for updb authentication"`
@@ -61,9 +62,15 @@ type connectControllerInput struct {
 }
 
 func (t *connectionTools) connect(_ context.Context, _ *mcp.CallToolRequest, in connectControllerInput) (*mcp.CallToolResult, any, error) {
+	// Prefer file path over inline JSON — much faster for the LLM to pass a path
+	identity := in.IdentityFile
+	if identity == "" {
+		identity = in.IdentityJSON
+	}
+
 	cfg := &config.Config{
 		ControllerURL:    in.ControllerURL,
-		IdentityFile:     in.IdentityJSON,
+		IdentityFile:     identity,
 		Username:         in.Username,
 		Password:         in.Password,
 		CertFile:         in.CertPEM,
