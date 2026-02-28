@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"syscall"
 	"testing"
 	"time"
 
@@ -36,7 +37,8 @@ func TestMain(m *testing.M) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Start ziti edge quickstart
+	// Start ziti edge quickstart in its own process group so we can kill the
+	// entire tree on cleanup.
 	cmd := exec.Command("ziti", "edge", "quickstart",
 		"--home", tmpDir,
 		"--ctrl-address", "localhost",
@@ -44,13 +46,19 @@ func TestMain(m *testing.M) {
 		"--router-address", "localhost",
 		"--router-port", "3022",
 	)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Stdout = os.Stderr // redirect process output to stderr, keep stdout clean
 	cmd.Stderr = os.Stderr
+	cmd.WaitDelay = 3 * time.Second // don't block on lingering child I/O
 	if err := cmd.Start(); err != nil {
 		fmt.Fprintln(os.Stderr, "ERROR: starting ziti edge quickstart:", err)
 		os.Exit(1)
 	}
-	defer cmd.Process.Kill() //nolint:errcheck
+	defer func() {
+		// Kill the entire process group to clean up child processes.
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		_ = cmd.Wait()
+	}()
 
 	// Wait for controller to be ready (up to 90 seconds)
 	if err := waitForController(quickstartAddr, 90*time.Second); err != nil {
