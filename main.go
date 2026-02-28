@@ -33,17 +33,38 @@ func run() error {
 		return fmt.Errorf("connecting to Ziti controller: %w", err)
 	}
 
-	if !zc.Connected() {
-		slog.Info("no credentials provided, use connect-controller tool to connect")
-	}
-
 	s := mcp.NewServer(&mcp.Implementation{
 		Name:    "ziti-mcp",
 		Version: "0.1.0",
-	}, nil)
+	}, &mcp.ServerOptions{
+		Instructions: buildInstructions(zc),
+	})
 
 	tools.RegisterAll(s, zc)
 
 	slog.Info("starting MCP server over STDIO")
 	return s.Run(context.Background(), &mcp.StdioTransport{})
+}
+
+// buildInstructions returns the MCP server instructions shown to the LLM
+// during initialization, including connection status and version compatibility.
+func buildInstructions(zc *ziticlient.Client) string {
+	base := "This server exposes the OpenZiti Management API. " +
+		"Use the provided tools to create, inspect, and manage resources in an OpenZiti network."
+
+	if !zc.Connected() {
+		return base + "\n\n" +
+			"STATUS: Not connected to a controller. " +
+			"Use the connect-controller tool to connect before calling any other tools."
+	}
+
+	info := zc.GetVersionInfo()
+	if info == nil {
+		return base + "\n\n" +
+			fmt.Sprintf("STATUS: Connected to %s.", zc.ControllerURL())
+	}
+
+	return base + "\n\n" +
+		fmt.Sprintf("STATUS: Connected to %s (controller %s).\n", zc.ControllerURL(), info.ControllerVersion) +
+		fmt.Sprintf("API compatibility: %s\n", info.CompatibilityNote)
 }
