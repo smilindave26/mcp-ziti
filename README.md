@@ -131,7 +131,7 @@ Requires Go 1.24 or later.
 
 ```bash
 git clone https://github.com/smilindave26/mcp-ziti.git
-cd mcp-ziti-golang
+cd mcp-ziti
 go build -o ziti-mcp .
 ```
 
