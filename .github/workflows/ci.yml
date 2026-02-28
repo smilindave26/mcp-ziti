@@ -23,7 +23,13 @@ jobs:
       - name: Unit tests
         run: go test ./internal/...
 
+      - name: MCP protocol tests
+        run: go test -v ./test/mcp/...
+
+      - name: Install ziti CLI
+        run: |
+          curl -sS https://get.openziti.io/install.bash | sudo bash -s openziti
+          ziti version
+
       - name: Integration tests
         run: go test -v -timeout 5m ./test/integration/...
-        env:
-          ZITI_VERSION: latest
