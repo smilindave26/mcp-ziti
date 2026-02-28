@@ -1,0 +1,1593 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="MCP server for the OpenZiti Management API">
+      
+      
+      
+        <link rel="canonical" href="https://smilindave26.github.io/mcp-ziti/tools/">
+      
+      
+        <link rel="prev" href="../agent-setup/">
+      
+      
+        <link rel="next" href="../development/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>Tools - mcp-ziti</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tools" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="mcp-ziti" class="md-header__button md-logo" aria-label="mcp-ziti" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            mcp-ziti
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Tools
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/smilindave26/mcp-ziti" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    smilindave26/mcp-ziti
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="mcp-ziti" class="md-nav__button md-logo" aria-label="mcp-ziti" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    mcp-ziti
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/smilindave26/mcp-ziti" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    smilindave26/mcp-ziti
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#connection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#identities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Services
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#service-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service Policies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edge-router-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edge Router Policies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#service-edge-router-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service Edge Router Policies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edge-routers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edge Routers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#routers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Routers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authenticators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authenticators
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enrollments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enrollments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#certificate-authorities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Certificate Authorities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#external-jwt-signers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External JWT Signers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auth-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auth Policies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#posture-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Posture Checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#terminators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Terminators
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sessions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#role-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Role Attributes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#network" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#connection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#identities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Services
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#service-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service Policies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edge-router-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edge Router Policies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#service-edge-router-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service Edge Router Policies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edge-routers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Edge Routers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#routers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Routers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authenticators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authenticators
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enrollments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enrollments
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#certificate-authorities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Certificate Authorities
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#external-jwt-signers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External JWT Signers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auth-policies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auth Policies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#posture-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Posture Checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#terminators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Terminators
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sessions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#role-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Role Attributes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#network" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Network
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Database
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="tools">Tools<a class="headerlink" href="#tools" title="Permanent link">&para;</a></h1>
+<p>All list tools accept <code>filter</code>, <code>limit</code> (default 100, max 500), and <code>offset</code> parameters for filtering and pagination.</p>
+<h2 id="connection">Connection<a class="headerlink" href="#connection" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>connect-controller</code></td>
+<td>Connect (or reconnect) to a Ziti controller at runtime</td>
+</tr>
+<tr>
+<td><code>disconnect-controller</code></td>
+<td>Disconnect from the current controller and clear credentials</td>
+</tr>
+<tr>
+<td><code>get-controller-status</code></td>
+<td>Get the current connection status and controller URL</td>
+</tr>
+<tr>
+<td><code>start-oidc-login</code></td>
+<td>Start an interactive OIDC login via browser (Device Authorization Grant)</td>
+</tr>
+<tr>
+<td><code>complete-oidc-login</code></td>
+<td>Complete the OIDC device login and connect to the controller</td>
+</tr>
+</tbody>
+</table>
+<h2 id="identities">Identities<a class="headerlink" href="#identities" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-identities</code></td>
+<td>List identities with optional filter and pagination</td>
+</tr>
+<tr>
+<td><code>get-identity</code></td>
+<td>Get a single identity by ID</td>
+</tr>
+<tr>
+<td><code>create-identity</code></td>
+<td>Create a new identity (Device, User, Router, or Service)</td>
+</tr>
+<tr>
+<td><code>update-identity</code></td>
+<td>Rename, change type, toggle admin flag, or update role attributes</td>
+</tr>
+<tr>
+<td><code>delete-identity</code></td>
+<td>Permanently delete an identity</td>
+</tr>
+</tbody>
+</table>
+<h2 id="services">Services<a class="headerlink" href="#services" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-services</code></td>
+<td>List services with optional filter and pagination</td>
+</tr>
+<tr>
+<td><code>get-service</code></td>
+<td>Get a single service by ID</td>
+</tr>
+<tr>
+<td><code>create-service</code></td>
+<td>Create a new service</td>
+</tr>
+<tr>
+<td><code>update-service</code></td>
+<td>Update a service's name, encryption setting, or role attributes</td>
+</tr>
+<tr>
+<td><code>delete-service</code></td>
+<td>Permanently delete a service</td>
+</tr>
+</tbody>
+</table>
+<h2 id="service-policies">Service Policies<a class="headerlink" href="#service-policies" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-service-policies</code></td>
+<td>List service policies</td>
+</tr>
+<tr>
+<td><code>get-service-policy</code></td>
+<td>Get a single service policy by ID</td>
+</tr>
+<tr>
+<td><code>create-service-policy</code></td>
+<td>Create a Dial or Bind service policy</td>
+</tr>
+<tr>
+<td><code>update-service-policy</code></td>
+<td>Update a service policy</td>
+</tr>
+<tr>
+<td><code>delete-service-policy</code></td>
+<td>Permanently delete a service policy</td>
+</tr>
+</tbody>
+</table>
+<h2 id="edge-router-policies">Edge Router Policies<a class="headerlink" href="#edge-router-policies" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-edge-router-policies</code></td>
+<td>List edge router policies</td>
+</tr>
+<tr>
+<td><code>get-edge-router-policy</code></td>
+<td>Get a single edge router policy by ID</td>
+</tr>
+<tr>
+<td><code>create-edge-router-policy</code></td>
+<td>Create an edge router policy</td>
+</tr>
+<tr>
+<td><code>delete-edge-router-policy</code></td>
+<td>Permanently delete an edge router policy</td>
+</tr>
+</tbody>
+</table>
+<h2 id="service-edge-router-policies">Service Edge Router Policies<a class="headerlink" href="#service-edge-router-policies" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-service-edge-router-policies</code></td>
+<td>List service edge router policies</td>
+</tr>
+<tr>
+<td><code>get-service-edge-router-policy</code></td>
+<td>Get a single service edge router policy by ID</td>
+</tr>
+<tr>
+<td><code>create-service-edge-router-policy</code></td>
+<td>Create a service edge router policy</td>
+</tr>
+<tr>
+<td><code>update-service-edge-router-policy</code></td>
+<td>Update a service edge router policy</td>
+</tr>
+<tr>
+<td><code>delete-service-edge-router-policy</code></td>
+<td>Permanently delete a service edge router policy</td>
+</tr>
+</tbody>
+</table>
+<h2 id="edge-routers">Edge Routers<a class="headerlink" href="#edge-routers" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-edge-routers</code></td>
+<td>List edge routers</td>
+</tr>
+<tr>
+<td><code>get-edge-router</code></td>
+<td>Get a single edge router by ID</td>
+</tr>
+</tbody>
+</table>
+<h2 id="routers">Routers<a class="headerlink" href="#routers" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-routers</code></td>
+<td>List fabric routers (edge and non-edge)</td>
+</tr>
+<tr>
+<td><code>get-router</code></td>
+<td>Get a single fabric router by ID</td>
+</tr>
+</tbody>
+</table>
+<h2 id="authenticators">Authenticators<a class="headerlink" href="#authenticators" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-authenticators</code></td>
+<td>List authenticators (credentials attached to identities)</td>
+</tr>
+<tr>
+<td><code>get-authenticator</code></td>
+<td>Get a single authenticator by ID</td>
+</tr>
+<tr>
+<td><code>update-authenticator</code></td>
+<td>Update username/password for an updb authenticator</td>
+</tr>
+<tr>
+<td><code>delete-authenticator</code></td>
+<td>Permanently delete an authenticator</td>
+</tr>
+</tbody>
+</table>
+<h2 id="enrollments">Enrollments<a class="headerlink" href="#enrollments" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-enrollments</code></td>
+<td>List pending enrollments</td>
+</tr>
+<tr>
+<td><code>get-enrollment</code></td>
+<td>Get a single enrollment by ID</td>
+</tr>
+<tr>
+<td><code>create-enrollment</code></td>
+<td>Create a new enrollment (ott, ottca, or updb)</td>
+</tr>
+<tr>
+<td><code>delete-enrollment</code></td>
+<td>Delete a pending enrollment</td>
+</tr>
+</tbody>
+</table>
+<h2 id="certificate-authorities">Certificate Authorities<a class="headerlink" href="#certificate-authorities" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-certificate-authorities</code></td>
+<td>List CAs</td>
+</tr>
+<tr>
+<td><code>get-certificate-authority</code></td>
+<td>Get a single CA by ID</td>
+</tr>
+<tr>
+<td><code>create-certificate-authority</code></td>
+<td>Create a new CA</td>
+</tr>
+<tr>
+<td><code>update-certificate-authority</code></td>
+<td>Update a CA</td>
+</tr>
+<tr>
+<td><code>delete-certificate-authority</code></td>
+<td>Permanently delete a CA</td>
+</tr>
+</tbody>
+</table>
+<h2 id="external-jwt-signers">External JWT Signers<a class="headerlink" href="#external-jwt-signers" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-external-jwt-signers</code></td>
+<td>List external JWT signers</td>
+</tr>
+<tr>
+<td><code>get-external-jwt-signer</code></td>
+<td>Get a single external JWT signer by ID</td>
+</tr>
+<tr>
+<td><code>create-external-jwt-signer</code></td>
+<td>Create an external JWT signer (cert or JWKS)</td>
+</tr>
+<tr>
+<td><code>update-external-jwt-signer</code></td>
+<td>Update an external JWT signer</td>
+</tr>
+<tr>
+<td><code>delete-external-jwt-signer</code></td>
+<td>Permanently delete an external JWT signer</td>
+</tr>
+</tbody>
+</table>
+<h2 id="auth-policies">Auth Policies<a class="headerlink" href="#auth-policies" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-auth-policies</code></td>
+<td>List authentication policies</td>
+</tr>
+<tr>
+<td><code>get-auth-policy</code></td>
+<td>Get a single auth policy by ID</td>
+</tr>
+<tr>
+<td><code>create-auth-policy</code></td>
+<td>Create an authentication policy</td>
+</tr>
+<tr>
+<td><code>update-auth-policy</code></td>
+<td>Update an authentication policy</td>
+</tr>
+<tr>
+<td><code>delete-auth-policy</code></td>
+<td>Permanently delete an auth policy</td>
+</tr>
+</tbody>
+</table>
+<h2 id="configs">Configs<a class="headerlink" href="#configs" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-config-types</code></td>
+<td>List service config types</td>
+</tr>
+<tr>
+<td><code>get-config-type</code></td>
+<td>Get a single config type by ID</td>
+</tr>
+<tr>
+<td><code>create-config-type</code></td>
+<td>Create a new config type</td>
+</tr>
+<tr>
+<td><code>delete-config-type</code></td>
+<td>Permanently delete a config type</td>
+</tr>
+<tr>
+<td><code>list-configs</code></td>
+<td>List service configurations</td>
+</tr>
+<tr>
+<td><code>get-config</code></td>
+<td>Get a single configuration by ID</td>
+</tr>
+<tr>
+<td><code>create-config</code></td>
+<td>Create a new service configuration</td>
+</tr>
+<tr>
+<td><code>update-config</code></td>
+<td>Update a service configuration</td>
+</tr>
+<tr>
+<td><code>delete-config</code></td>
+<td>Permanently delete a service configuration</td>
+</tr>
+</tbody>
+</table>
+<h2 id="posture-checks">Posture Checks<a class="headerlink" href="#posture-checks" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-posture-checks</code></td>
+<td>List posture checks</td>
+</tr>
+<tr>
+<td><code>get-posture-check</code></td>
+<td>Get a single posture check by ID</td>
+</tr>
+<tr>
+<td><code>list-posture-check-types</code></td>
+<td>List available posture check types</td>
+</tr>
+<tr>
+<td><code>delete-posture-check</code></td>
+<td>Permanently delete a posture check</td>
+</tr>
+</tbody>
+</table>
+<h2 id="terminators">Terminators<a class="headerlink" href="#terminators" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-terminators</code></td>
+<td>List terminators</td>
+</tr>
+<tr>
+<td><code>get-terminator</code></td>
+<td>Get a single terminator by ID</td>
+</tr>
+<tr>
+<td><code>create-terminator</code></td>
+<td>Create a terminator linking a service to a router address</td>
+</tr>
+<tr>
+<td><code>delete-terminator</code></td>
+<td>Permanently delete a terminator</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sessions">Sessions<a class="headerlink" href="#sessions" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-api-sessions</code></td>
+<td>List active management API sessions</td>
+</tr>
+<tr>
+<td><code>get-api-session</code></td>
+<td>Get a single API session by ID</td>
+</tr>
+<tr>
+<td><code>delete-api-session</code></td>
+<td>Force-delete an API session</td>
+</tr>
+<tr>
+<td><code>list-sessions</code></td>
+<td>List active network (data-plane) sessions</td>
+</tr>
+<tr>
+<td><code>get-session</code></td>
+<td>Get a single network session by ID</td>
+</tr>
+<tr>
+<td><code>delete-session</code></td>
+<td>Terminate a network session</td>
+</tr>
+</tbody>
+</table>
+<h2 id="role-attributes">Role Attributes<a class="headerlink" href="#role-attributes" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list-identity-role-attributes</code></td>
+<td>List role attributes in use on identities</td>
+</tr>
+<tr>
+<td><code>list-edge-router-role-attributes</code></td>
+<td>List role attributes in use on edge routers</td>
+</tr>
+<tr>
+<td><code>list-service-role-attributes</code></td>
+<td>List role attributes in use on services</td>
+</tr>
+<tr>
+<td><code>list-posture-check-role-attributes</code></td>
+<td>List role attributes in use on posture checks</td>
+</tr>
+</tbody>
+</table>
+<h2 id="network">Network<a class="headerlink" href="#network" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get-controller-version</code></td>
+<td>Get controller version and build info</td>
+</tr>
+<tr>
+<td><code>list-summary</code></td>
+<td>Get a resource count summary for the whole network</td>
+</tr>
+<tr>
+<td><code>list-controllers</code></td>
+<td>List controllers in an HA cluster</td>
+</tr>
+</tbody>
+</table>
+<h2 id="database">Database<a class="headerlink" href="#database" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>create-database-snapshot</code></td>
+<td>Trigger an immediate database backup snapshot</td>
+</tr>
+<tr>
+<td><code>check-data-integrity</code></td>
+<td>Run an integrity check on the controller database</td>
+</tr>
+<tr>
+<td><code>fix-data-integrity</code></td>
+<td>Attempt to fix data integrity issues automatically</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
