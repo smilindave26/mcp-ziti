@@ -12,6 +12,9 @@ import (
 	"github.com/netfoundry/mcp-ziti-golang/internal/ziticlient"
 )
 
+// version is set at build time via ldflags.
+var version = "dev"
+
 func main() {
 	// All log output goes to stderr so it never corrupts the STDIO MCP stream.
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
@@ -35,7 +38,7 @@ func run() error {
 
 	s := mcp.NewServer(&mcp.Implementation{
 		Name:    "ziti-mcp",
-		Version: "0.1.0",
+		Version: version,
 	}, &mcp.ServerOptions{
 		Instructions: buildInstructions(zc),
 	})

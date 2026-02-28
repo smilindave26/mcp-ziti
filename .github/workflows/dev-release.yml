@@ -1,0 +1,48 @@
+name: Dev Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  dev-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build snapshot
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --snapshot --clean
+
+      - name: Update dev release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete dev --yes --cleanup-tag 2>/dev/null || true
+          gh release create dev \
+            --prerelease \
+            --title "Development Build" \
+            --notes "$(cat <<EOF
+          Latest build from \`main\` branch.
+
+          **Commit:** \`${{ github.sha }}\`
+          **Built:** $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          > This is an automated pre-release updated on every push to \`main\`.
+          > For stable releases, see the latest versioned release.
+          EOF
+          )" \
+            dist/*.tar.gz dist/*.zip dist/checksums.txt
