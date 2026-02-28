@@ -56,7 +56,30 @@ func newTestClient(t *testing.T, mock *mockAuthenticator) *Client {
 	if err := c.authenticate(); err != nil {
 		t.Fatalf("initial authenticate: %v", err)
 	}
+	c.connected = true
 	return c
+}
+
+func TestMgmt_ErrNotConnected(t *testing.T) {
+	c := &Client{} // disconnected
+	_, err := c.Mgmt()
+	if err != ErrNotConnected {
+		t.Errorf("expected ErrNotConnected, got %v", err)
+	}
+}
+
+func TestConnected_Disconnected(t *testing.T) {
+	c := &Client{}
+	if c.Connected() {
+		t.Error("expected Connected() == false for new empty client")
+	}
+}
+
+func TestControllerURL_Disconnected(t *testing.T) {
+	c := &Client{}
+	if got := c.ControllerURL(); got != "" {
+		t.Errorf("expected empty ControllerURL, got %q", got)
+	}
 }
 
 func TestMgmt_RefreshesSessionNearExpiry(t *testing.T) {

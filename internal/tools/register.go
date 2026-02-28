@@ -7,6 +7,7 @@ import (
 
 // RegisterAll registers all Ziti management tools with the MCP server.
 func RegisterAll(s *mcp.Server, zc *ziticlient.Client) {
+	registerConnectionTools(s, zc)
 	registerIdentityTools(s, zc)
 	registerServiceTools(s, zc)
 	registerServicePolicyTools(s, zc)

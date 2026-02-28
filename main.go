@@ -33,6 +33,10 @@ func run() error {
 		return fmt.Errorf("connecting to Ziti controller: %w", err)
 	}
 
+	if !zc.Connected() {
+		slog.Info("no credentials provided, use connect-controller tool to connect")
+	}
+
 	s := mcp.NewServer(&mcp.Implementation{
 		Name:    "ziti-mcp",
 		Version: "0.1.0",

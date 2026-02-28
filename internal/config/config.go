@@ -121,7 +121,8 @@ func (c *Config) validate() error {
 	}
 
 	if count == 0 {
-		return fmt.Errorf("no authentication configured: provide --identity-file, --username/--password, --cert/--key, --ext-jwt-token/--ext-jwt-file, or --oidc-issuer/--oidc-client-id/--oidc-client-secret")
+		// Zero auth is allowed — the LLM can connect at runtime via connect-controller.
+		return nil
 	}
 	if count > 1 {
 		return fmt.Errorf("multiple authentication methods configured: use exactly one of --identity-file, --username/--password, --cert/--key, --ext-jwt-token/--ext-jwt-file, or --oidc-issuer/--oidc-client-id/--oidc-client-secret")
@@ -169,4 +170,22 @@ func (c *Config) validate() error {
 	}
 
 	return nil
+}
+
+// HasAuth returns true if at least one authentication method is configured.
+func (c *Config) HasAuth() bool {
+	return c.IdentityFile != "" ||
+		c.Username != "" || c.Password != "" ||
+		c.CertFile != "" || c.KeyFile != "" ||
+		c.ExtJWTToken != "" || c.ExtJWTFile != "" ||
+		c.OIDCIssuer != "" || c.OIDCClientID != "" || c.OIDCClientSecret != ""
+}
+
+// ValidateAuth validates auth fields, requiring that at least one auth method is present.
+// Used by connect-controller to validate runtime-supplied credentials.
+func (c *Config) ValidateAuth() error {
+	if !c.HasAuth() {
+		return fmt.Errorf("no authentication configured: provide identity file, username/password, cert/key, ext-jwt-token/ext-jwt-file, or oidc credentials")
+	}
+	return c.validate()
 }

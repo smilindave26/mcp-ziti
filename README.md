@@ -2,7 +2,7 @@
 
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that exposes the [OpenZiti](https://openziti.io) Management API to AI agents. It lets any MCP-compatible client — Claude Desktop, Cursor, VS Code Copilot, and others — create, inspect, and manage the resources in an OpenZiti network using natural language.
 
-The server communicates over STDIO and authenticates with an OpenZiti controller using one of five methods: an identity JSON file, username/password, a client certificate, an external JWT token, or OIDC client credentials.
+The server communicates over STDIO. It can authenticate with an OpenZiti controller at startup using one of five methods (identity JSON file, username/password, client certificate, external JWT token, or OIDC client credentials), or it can start **without any credentials** and let the AI agent connect to a controller at runtime via the `connect-controller` tool.
 
 ---
 
@@ -10,6 +10,8 @@ The server communicates over STDIO and authenticates with an OpenZiti controller
 
 | Category | Tool | Description |
 |---|---|---|
+| **Connection** | `connect-controller` | Connect (or reconnect) to a Ziti controller at runtime |
+| | `get-controller-status` | Get the current connection status and controller URL |
 | **Identities** | `list-identities` | List identities with optional filter and pagination |
 | | `get-identity` | Get a single identity by ID |
 | | `create-identity` | Create a new identity (Device, User, Router, or Service) |
@@ -122,7 +124,7 @@ The resulting `mcp-ziti` binary is a single self-contained executable with no ru
 
 ## Authentication
 
-Exactly one authentication method must be configured. All options are available as CLI flags or environment variables (flags take precedence).
+Credentials are **optional at startup**. If no authentication is configured, the server starts in a disconnected state and the AI agent can connect later using the `connect-controller` tool. When credentials are provided, exactly one authentication method must be used. All options are available as CLI flags or environment variables (flags take precedence).
 
 ### Identity JSON file
 
@@ -255,6 +257,18 @@ mcp-ziti --controller https://ctrl.example.com:1280 \
 ## Agent Configuration
 
 The server communicates over STDIO. Configure it as an MCP server in your agent's settings by pointing to the binary and passing your preferred authentication flags.
+
+You can also start the server **with no credentials at all** — the agent can then connect to any controller at runtime using the `connect-controller` tool:
+
+```json
+{
+  "mcpServers": {
+    "ziti": {
+      "command": "/usr/local/bin/mcp-ziti"
+    }
+  }
+}
+```
 
 ### Claude Desktop
 

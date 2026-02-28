@@ -6,8 +6,36 @@ import (
 
 func TestValidate_NoAuth(t *testing.T) {
 	c := &Config{}
-	if err := c.validate(); err == nil {
-		t.Error("expected error when no auth is configured")
+	if err := c.validate(); err != nil {
+		t.Errorf("zero auth should be allowed (connect at runtime): %v", err)
+	}
+}
+
+func TestHasAuth_Empty(t *testing.T) {
+	c := &Config{}
+	if c.HasAuth() {
+		t.Error("expected HasAuth() == false for empty config")
+	}
+}
+
+func TestHasAuth_WithUsername(t *testing.T) {
+	c := &Config{Username: "admin", Password: "pass"}
+	if !c.HasAuth() {
+		t.Error("expected HasAuth() == true when username is set")
+	}
+}
+
+func TestValidateAuth_NoAuth(t *testing.T) {
+	c := &Config{}
+	if err := c.ValidateAuth(); err == nil {
+		t.Error("expected error from ValidateAuth when no auth configured")
+	}
+}
+
+func TestValidateAuth_ValidUpdb(t *testing.T) {
+	c := &Config{ControllerURL: "https://ctrl:1280", Username: "admin", Password: "secret"}
+	if err := c.ValidateAuth(); err != nil {
+		t.Errorf("unexpected error: %v", err)
 	}
 }
 
