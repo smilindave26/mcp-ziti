@@ -46,11 +46,19 @@ func TestMain(m *testing.M) {
 		"--router-address", "localhost",
 		"--router-port", "3022",
 	)
+	// Write quickstart output to a log file instead of os.Stderr. Sharing the
+	// test binary's stderr fd with the child causes "Test I/O incomplete" in CI
+	// because orphaned child processes keep the pipe open after the test exits.
+	logFile, err := os.Create(tmpDir + "/quickstart.log")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "ERROR: creating log file:", err)
+		os.Exit(1)
+	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Stdout = os.Stderr // redirect process output to stderr, keep stdout clean
-	cmd.Stderr = os.Stderr
-	cmd.WaitDelay = 3 * time.Second // don't block on lingering child I/O
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
 	if err := cmd.Start(); err != nil {
+		logFile.Close()
 		fmt.Fprintln(os.Stderr, "ERROR: starting ziti edge quickstart:", err)
 		os.Exit(1)
 	}
@@ -58,6 +66,7 @@ func TestMain(m *testing.M) {
 		// Kill the entire process group to clean up child processes.
 		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		_ = cmd.Wait()
+		logFile.Close()
 	}()
 
 	// Wait for controller to be ready (up to 90 seconds)
