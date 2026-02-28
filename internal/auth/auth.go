@@ -275,12 +275,20 @@ type identityFileJSON struct {
 	} `json:"id"`
 }
 
-// fromIdentityFile builds an Authenticator by parsing a Ziti identity JSON file.
+// fromIdentityFile builds an Authenticator by parsing a Ziti identity JSON.
 // The controller URL is extracted from the ztAPI field unless overridden in cfg.
+// cfg.IdentityFile may be a file path or inline JSON content (detected by
+// leading '{').
 func fromIdentityFile(cfg *config.Config) (*Result, error) {
-	data, err := os.ReadFile(cfg.IdentityFile)
-	if err != nil {
-		return nil, fmt.Errorf("reading identity file: %w", err)
+	var data []byte
+	if strings.HasPrefix(strings.TrimSpace(cfg.IdentityFile), "{") {
+		data = []byte(cfg.IdentityFile)
+	} else {
+		var err error
+		data, err = os.ReadFile(cfg.IdentityFile)
+		if err != nil {
+			return nil, fmt.Errorf("reading identity file: %w", err)
+		}
 	}
 
 	var idFile identityFileJSON
