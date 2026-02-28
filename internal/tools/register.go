@@ -2,12 +2,13 @@ package tools
 
 import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/netfoundry/mcp-ziti-golang/internal/config"
 	"github.com/netfoundry/mcp-ziti-golang/internal/ziticlient"
 )
 
 // RegisterAll registers all Ziti management tools with the MCP server.
-func RegisterAll(s *mcp.Server, zc *ziticlient.Client) {
-	registerConnectionTools(s, zc)
+func RegisterAll(s *mcp.Server, zc *ziticlient.Client, cfg *config.Config) {
+	registerConnectionTools(s, zc, cfg)
 	registerIdentityTools(s, zc)
 	registerServiceTools(s, zc)
 	registerServicePolicyTools(s, zc)

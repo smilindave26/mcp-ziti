@@ -207,14 +207,19 @@ func TestValidate_OIDCMissingClientID(t *testing.T) {
 	}
 }
 
-func TestValidate_OIDCMissingClientSecret(t *testing.T) {
+func TestValidate_OIDCWithoutSecret_StartsDisconnected(t *testing.T) {
 	c := &Config{
 		ControllerURL: "https://ctrl:1280",
 		OIDCIssuer:    "https://idp.example.com",
 		OIDCClientID:  "my-client",
 	}
-	if err := c.validate(); err == nil {
-		t.Error("expected error when OIDC client secret missing")
+	// OIDC issuer + client ID without a secret is allowed — used as
+	// pre-configured defaults for the interactive start-oidc-login tool.
+	if err := c.validate(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if c.HasAuth() {
+		t.Error("expected HasAuth() to be false without client secret")
 	}
 }
 

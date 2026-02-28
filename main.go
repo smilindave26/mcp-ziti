@@ -40,10 +40,10 @@ func run() error {
 		Name:    "ziti-mcp",
 		Version: version,
 	}, &mcp.ServerOptions{
-		Instructions: buildInstructions(zc),
+		Instructions: buildInstructions(zc, cfg),
 	})
 
-	tools.RegisterAll(s, zc)
+	tools.RegisterAll(s, zc, cfg)
 
 	slog.Info("starting MCP server over STDIO")
 	return s.Run(context.Background(), &mcp.StdioTransport{})
@@ -51,14 +51,29 @@ func run() error {
 
 // buildInstructions returns the MCP server instructions shown to the LLM
 // during initialization, including connection status and version compatibility.
-func buildInstructions(zc *ziticlient.Client) string {
+func buildInstructions(zc *ziticlient.Client, cfg *config.Config) string {
 	base := "This server exposes the OpenZiti Management API. " +
 		"Use the provided tools to create, inspect, and manage resources in an OpenZiti network."
 
 	if !zc.Connected() {
-		return base + "\n\n" +
-			"STATUS: Not connected to a controller. " +
-			"Use the connect-controller tool to connect before calling any other tools."
+		hint := "STATUS: Not connected to a controller. " +
+			"Connect before calling any other tools.\n\n" +
+			"IMPORTANT: Present ALL of the following options to the user as separate choices. Do NOT combine or merge them:\n" +
+			"  1. Interactive browser login — user opens a link and authenticates in their browser (best for human users with a 3rd-party identity provider)\n" +
+			"  2. Identity JSON file — provide a path to a Ziti identity .json file on disk\n" +
+			"  3. Username and password — authenticate with the controller's built-in user database\n" +
+			"  4. Client certificate — authenticate with a TLS client cert and private key\n" +
+			"  5. External JWT token — authenticate with a pre-issued JWT string\n" +
+			"  6. OIDC client credentials — authenticate with a client ID and secret from an identity provider (for service accounts)"
+
+		if cfg != nil && cfg.OIDCIssuer != "" && cfg.OIDCClientID != "" {
+			hint += fmt.Sprintf(
+				"\n\nOIDC defaults are pre-configured (issuer: %s, client: %s). "+
+					"If the user picks option 1, call start-oidc-login with no parameters.",
+				cfg.OIDCIssuer, cfg.OIDCClientID)
+		}
+
+		return base + "\n\n" + hint
 	}
 
 	info := zc.GetVersionInfo()

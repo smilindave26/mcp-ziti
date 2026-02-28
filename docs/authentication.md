@@ -121,6 +121,31 @@ ZITI_OIDC_CLIENT_SECRET=my-secret \
 ziti-mcp
 ```
 
+## Interactive OIDC login (browser)
+
+For users configured via a 3rd-party identity provider who don't have a client secret, the AI agent can initiate an interactive browser login using the [OAuth 2.0 Device Authorization Grant (RFC 8628)](https://datatracker.ietf.org/doc/html/rfc8628).
+
+**When to use this:** Your Ziti network uses an external IdP (e.g. Auth0, Okta, Keycloak) for user authentication, and you want to log in interactively rather than providing a client secret.
+
+**Two-step flow:**
+
+1. The agent calls `start-oidc-login` (with `controllerUrl`, `oidcIssuer`, and `oidcClientId`, or these can come from startup defaults)
+2. The tool returns a verification URL and a user code
+3. The agent presents the URL and code to the user, who opens the URL in their browser and enters the code
+4. The user authenticates with the IdP in the browser
+5. The agent calls `complete-oidc-login` — the tool polls the IdP token endpoint until authentication completes, then connects
+
+**Pre-configured defaults:** You can set `--controller`, `--oidc-issuer`, `--oidc-client-id`, and `--oidc-audience` at startup without `--oidc-client-secret`. The server starts disconnected, and those values are used as defaults for `start-oidc-login` so the agent doesn't need to provide them:
+
+```bash
+ziti-mcp --controller https://ctrl.example.com:1280 \
+          --oidc-issuer https://idp.example.com \
+          --oidc-client-id my-public-client
+```
+
+!!! note
+    The IdP must support the Device Authorization Grant flow. Auth0, Okta, and Keycloak all support it. No redirect URIs need to be configured.
+
 ## Optional CA override
 
 By default the server fetches the controller's CA bundle from its well-known endpoint. To use a custom CA instead, add `--ca` (or `ZITI_CA_FILE`) to any of the methods above:
@@ -144,8 +169,8 @@ ziti-mcp --controller https://ctrl.example.com:1280 \
 | `--ca` | `ZITI_CA_FILE` | Path to a PEM CA bundle (optional override) |
 | `--ext-jwt-token` | `ZITI_EXT_JWT_TOKEN` | External JWT token string |
 | `--ext-jwt-file` | `ZITI_EXT_JWT_FILE` | Path to a file containing an external JWT |
-| `--oidc-issuer` | `ZITI_OIDC_ISSUER` | OIDC issuer URL for client credentials flow |
+| `--oidc-issuer` | `ZITI_OIDC_ISSUER` | OIDC issuer URL |
 | `--oidc-client-id` | `ZITI_OIDC_CLIENT_ID` | OIDC client ID |
-| `--oidc-client-secret` | `ZITI_OIDC_CLIENT_SECRET` | OIDC client secret |
+| `--oidc-client-secret` | `ZITI_OIDC_CLIENT_SECRET` | OIDC client secret (required for client credentials flow, omit for interactive login) |
 | `--oidc-audience` | `ZITI_OIDC_AUDIENCE` | OIDC audience claim (optional) |
 | `--oidc-token-url` | `ZITI_OIDC_TOKEN_URL` | OIDC token endpoint URL — skips discovery (optional) |

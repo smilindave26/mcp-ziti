@@ -140,6 +140,35 @@ func (c *Client) Connect(cfg *config.Config) error {
 	return nil
 }
 
+// ConnectWithAuth authenticates against a controller using a pre-built auth.Result,
+// replacing any existing connection. This bypasses config validation and auth.Build,
+// which is useful when the caller has already obtained credentials (e.g. via OIDC
+// authorization code flow). Thread-safe.
+func (c *Client) ConnectWithAuth(authResult *auth.Result) error {
+	ctrlURL, err := url.Parse(authResult.ControllerURL)
+	if err != nil {
+		return fmt.Errorf("parsing controller URL: %w", err)
+	}
+
+	c.mu.Lock()
+
+	oldAuth, oldURL, oldConnected := c.authenticator, c.ctrlURL, c.connected
+	c.authenticator = authResult.Authenticator
+	c.ctrlURL = ctrlURL
+
+	if err := c.authenticate(); err != nil {
+		c.authenticator, c.ctrlURL, c.connected = oldAuth, oldURL, oldConnected
+		c.mu.Unlock()
+		return fmt.Errorf("authentication failed: %w", err)
+	}
+
+	c.connected = true
+	c.mu.Unlock()
+
+	c.fetchAndLogVersionInfo()
+	return nil
+}
+
 // Disconnect clears the active controller connection. Thread-safe.
 // Returns ErrNotConnected if already disconnected.
 func (c *Client) Disconnect() error {

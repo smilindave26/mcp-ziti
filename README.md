@@ -2,7 +2,7 @@
 
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that exposes the [OpenZiti](https://openziti.io) Management API to AI agents. It lets any MCP-compatible client — Claude Desktop, Cursor, VS Code Copilot, and others — create, inspect, and manage the resources in an OpenZiti network using natural language.
 
-The server communicates over STDIO. It can authenticate with an OpenZiti controller at startup using one of five methods (identity JSON file, username/password, client certificate, external JWT token, or OIDC client credentials), or it can start **without any credentials** and let the AI agent connect to a controller at runtime via the `connect-controller` tool.
+The server communicates over STDIO. It can authenticate with an OpenZiti controller at startup using one of five methods (identity JSON file, username/password, client certificate, external JWT token, or OIDC client credentials), or it can start **without any credentials** and let the AI agent connect to a controller at runtime via the `connect-controller` tool. For interactive OIDC login via browser (OAuth 2.0 Device Authorization Grant), the agent can use `start-oidc-login` and `complete-oidc-login`.
 
 ---
 
@@ -13,6 +13,8 @@ The server communicates over STDIO. It can authenticate with an OpenZiti control
 | **Connection** | `connect-controller` | Connect (or reconnect) to a Ziti controller at runtime |
 | | `disconnect-controller` | Disconnect from the current controller and clear credentials |
 | | `get-controller-status` | Get the current connection status and controller URL |
+| | `start-oidc-login` | Start an interactive OIDC login via browser (Device Authorization Grant) |
+| | `complete-oidc-login` | Complete the OIDC device login and connect to the controller |
 | **Identities** | `list-identities` | List identities with optional filter and pagination |
 | | `get-identity` | Get a single identity by ID |
 | | `create-identity` | Create a new identity (Device, User, Router, or Service) |
@@ -259,6 +261,43 @@ ZITI_OIDC_CLIENT_SECRET=my-secret \
 ziti-mcp
 ```
 
+### Interactive OIDC login (browser)
+
+For users configured via a 3rd-party IdP who don't have a client secret, the AI agent can initiate an interactive browser login using the [OAuth 2.0 Device Authorization Grant (RFC 8628)](https://datatracker.ietf.org/doc/html/rfc8628).
+
+1. The agent calls `start-oidc-login` with the controller URL, OIDC issuer, and client ID
+2. The tool returns a verification URL and a user code — the agent presents both to the user
+3. The user opens the URL in their browser, enters the code, and authenticates with the IdP
+4. The agent calls `complete-oidc-login` which polls the IdP until authentication completes, then connects
+
+Pre-configure the connection details at startup so the agent doesn't need to provide them each time — omit `--oidc-client-secret` to start in disconnected mode with OIDC defaults ready:
+
+```bash
+ziti-mcp --controller https://ctrl.example.com:1280 \
+          --oidc-issuer https://idp.example.com \
+          --oidc-client-id my-public-client
+```
+
+Or in your MCP server config:
+```json
+{
+  "mcpServers": {
+    "ziti": {
+      "command": "/usr/local/bin/ziti-mcp",
+      "args": [
+        "--controller", "https://ctrl.example.com:1280",
+        "--oidc-issuer", "https://idp.example.com",
+        "--oidc-client-id", "my-public-client"
+      ]
+    }
+  }
+}
+```
+
+The agent can then simply call `start-oidc-login` with no parameters, and all the connection details are filled in from the startup config.
+
+This requires the IdP to support the Device Authorization Grant flow (Auth0, Okta, and Keycloak all do).
+
 ### Optional CA override
 
 By default the server fetches the controller's CA bundle from its well-known endpoint. To use a custom CA instead, add `--ca` (or `ZITI_CA_FILE`) to any of the methods above:
@@ -497,9 +536,9 @@ Add to your project's `.claude/settings.json` or `~/.claude/settings.json`:
 | `--ca` | `ZITI_CA_FILE` | Path to a PEM CA bundle (optional override) |
 | `--ext-jwt-token` | `ZITI_EXT_JWT_TOKEN` | External JWT token string |
 | `--ext-jwt-file` | `ZITI_EXT_JWT_FILE` | Path to a file containing an external JWT |
-| `--oidc-issuer` | `ZITI_OIDC_ISSUER` | OIDC issuer URL for client credentials flow |
+| `--oidc-issuer` | `ZITI_OIDC_ISSUER` | OIDC issuer URL |
 | `--oidc-client-id` | `ZITI_OIDC_CLIENT_ID` | OIDC client ID |
-| `--oidc-client-secret` | `ZITI_OIDC_CLIENT_SECRET` | OIDC client secret |
+| `--oidc-client-secret` | `ZITI_OIDC_CLIENT_SECRET` | OIDC client secret (required for client credentials flow, omit for interactive login) |
 | `--oidc-audience` | `ZITI_OIDC_AUDIENCE` | OIDC audience claim (optional) |
 | `--oidc-token-url` | `ZITI_OIDC_TOKEN_URL` | OIDC token endpoint URL — skips discovery (optional) |
 

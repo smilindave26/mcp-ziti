@@ -9,6 +9,8 @@ All list tools accept `filter`, `limit` (default 100, max 500), and `offset` par
 | `connect-controller` | Connect (or reconnect) to a Ziti controller at runtime |
 | `disconnect-controller` | Disconnect from the current controller and clear credentials |
 | `get-controller-status` | Get the current connection status and controller URL |
+| `start-oidc-login` | Start an interactive OIDC login via browser (Device Authorization Grant) |
+| `complete-oidc-login` | Complete the OIDC device login and connect to the controller |
 
 ## Identities
 

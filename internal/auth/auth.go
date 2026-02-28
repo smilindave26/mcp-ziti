@@ -141,10 +141,11 @@ func fromOIDC(cfg *config.Config) (*Result, error) {
 
 	tokenURL := cfg.OIDCTokenURL
 	if tokenURL == "" {
-		tokenURL, err = discoverTokenURL(cfg.OIDCIssuer)
-		if err != nil {
-			return nil, fmt.Errorf("OIDC discovery for %q: %w", cfg.OIDCIssuer, err)
+		endpoints, discoverErr := DiscoverOIDCEndpoints(cfg.OIDCIssuer)
+		if discoverErr != nil {
+			return nil, fmt.Errorf("OIDC discovery for %q: %w", cfg.OIDCIssuer, discoverErr)
 		}
+		tokenURL = endpoints.TokenEndpoint
 	}
 
 	endpointParams := url.Values{}
@@ -236,33 +237,67 @@ func (a *extJWTAuthenticator) BuildHttpClient() (*http.Client, error) {
 	return a.BuildHttpClientWithModifyTls(nil)
 }
 
-// discoverTokenURL fetches the OIDC discovery document from the issuer and
-// returns the token_endpoint URL. If OIDCTokenURL is set in config, this
-// function is never called.
-func discoverTokenURL(issuer string) (string, error) {
+// OIDCEndpoints holds the endpoints discovered from an OIDC issuer's
+// .well-known/openid-configuration document.
+type OIDCEndpoints struct {
+	TokenEndpoint                string
+	AuthorizationEndpoint        string
+	DeviceAuthorizationEndpoint  string
+}
+
+// DiscoverOIDCEndpoints fetches the OIDC discovery document from the issuer and
+// returns the token, authorization, and device authorization endpoints.
+func DiscoverOIDCEndpoints(issuer string) (*OIDCEndpoints, error) {
 	discoveryURL := strings.TrimRight(issuer, "/") + "/.well-known/openid-configuration"
 	//nolint:gosec // URL is caller-provided configuration, not user input
 	resp, err := http.Get(discoveryURL)
 	if err != nil {
-		return "", fmt.Errorf("fetching OIDC discovery document: %w", err)
+		return nil, fmt.Errorf("fetching OIDC discovery document: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("OIDC discovery returned HTTP %d from %s", resp.StatusCode, discoveryURL)
+		return nil, fmt.Errorf("OIDC discovery returned HTTP %d from %s", resp.StatusCode, discoveryURL)
 	}
 
 	var doc struct {
-		TokenEndpoint string `json:"token_endpoint"`
+		TokenEndpoint                string `json:"token_endpoint"`
+		AuthorizationEndpoint        string `json:"authorization_endpoint"`
+		DeviceAuthorizationEndpoint  string `json:"device_authorization_endpoint"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil {
-		return "", fmt.Errorf("decoding OIDC discovery document: %w", err)
+		return nil, fmt.Errorf("decoding OIDC discovery document: %w", err)
 	}
 	if doc.TokenEndpoint == "" {
-		return "", fmt.Errorf("OIDC discovery document at %s missing token_endpoint", discoveryURL)
+		return nil, fmt.Errorf("OIDC discovery document at %s missing token_endpoint", discoveryURL)
 	}
 
-	return doc.TokenEndpoint, nil
+	return &OIDCEndpoints{
+		TokenEndpoint:                doc.TokenEndpoint,
+		AuthorizationEndpoint:        doc.AuthorizationEndpoint,
+		DeviceAuthorizationEndpoint:  doc.DeviceAuthorizationEndpoint,
+	}, nil
+}
+
+// FromToken builds an auth.Result from an already-obtained access token string
+// and controller URL. This is used by the device authorization flow after
+// polling for the token.
+func FromToken(ctrlURL, token, caFile string) (*Result, error) {
+	normalizedURL, err := normalizeURL(ctrlURL)
+	if err != nil {
+		return nil, err
+	}
+
+	caPool, err := resolveCAPool(caFile, normalizedURL)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenFunc := func() (string, error) { return token, nil }
+	a := &extJWTAuthenticator{tokenFunc: tokenFunc}
+	a.RootCas = caPool
+
+	return &Result{Authenticator: a, ControllerURL: normalizedURL}, nil
 }
 
 // identityFileJSON is the top-level structure of a Ziti identity JSON file.

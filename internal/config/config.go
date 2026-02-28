@@ -42,9 +42,9 @@ func Load() (*Config, error) {
 	flag.StringVar(&c.CAFile, "ca", "", "Path to CA bundle PEM file — optional override (env: ZITI_CA_FILE)")
 	flag.StringVar(&c.ExtJWTToken, "ext-jwt-token", "", "External JWT token string (env: ZITI_EXT_JWT_TOKEN)")
 	flag.StringVar(&c.ExtJWTFile, "ext-jwt-file", "", "Path to file containing an external JWT (env: ZITI_EXT_JWT_FILE)")
-	flag.StringVar(&c.OIDCIssuer, "oidc-issuer", "", "OIDC issuer URL for client credentials flow (env: ZITI_OIDC_ISSUER)")
+	flag.StringVar(&c.OIDCIssuer, "oidc-issuer", "", "OIDC issuer URL (env: ZITI_OIDC_ISSUER)")
 	flag.StringVar(&c.OIDCClientID, "oidc-client-id", "", "OIDC client ID (env: ZITI_OIDC_CLIENT_ID)")
-	flag.StringVar(&c.OIDCClientSecret, "oidc-client-secret", "", "OIDC client secret (env: ZITI_OIDC_CLIENT_SECRET)")
+	flag.StringVar(&c.OIDCClientSecret, "oidc-client-secret", "", "OIDC client secret — required for client credentials flow, omit for interactive login (env: ZITI_OIDC_CLIENT_SECRET)")
 	flag.StringVar(&c.OIDCAudience, "oidc-audience", "", "OIDC audience claim — optional (env: ZITI_OIDC_AUDIENCE)")
 	flag.StringVar(&c.OIDCTokenURL, "oidc-token-url", "", "OIDC token endpoint URL — optional, skips discovery (env: ZITI_OIDC_TOKEN_URL)")
 	flag.Parse()
@@ -101,7 +101,10 @@ func (c *Config) validate() error {
 	hasCreds := c.Username != "" || c.Password != ""
 	hasCert := c.CertFile != "" || c.KeyFile != ""
 	hasExtJWT := c.ExtJWTToken != "" || c.ExtJWTFile != ""
-	hasOIDC := c.OIDCIssuer != "" || c.OIDCClientID != "" || c.OIDCClientSecret != ""
+	// OIDC client credentials flow requires the secret. Providing issuer + client ID
+	// without a secret is allowed — those values serve as pre-configured defaults
+	// for the interactive start-oidc-login tool at runtime.
+	hasOIDC := c.OIDCClientSecret != "" && (c.OIDCIssuer != "" || c.OIDCClientID != "")
 
 	count := 0
 	if hasIdentity {
@@ -173,12 +176,14 @@ func (c *Config) validate() error {
 }
 
 // HasAuth returns true if at least one authentication method is configured.
+// OIDC issuer/client ID without a secret is not considered a complete auth
+// method — those are pre-configured defaults for the interactive OIDC login.
 func (c *Config) HasAuth() bool {
 	return c.IdentityFile != "" ||
 		c.Username != "" || c.Password != "" ||
 		c.CertFile != "" || c.KeyFile != "" ||
 		c.ExtJWTToken != "" || c.ExtJWTFile != "" ||
-		c.OIDCIssuer != "" || c.OIDCClientID != "" || c.OIDCClientSecret != ""
+		(c.OIDCClientSecret != "" && (c.OIDCIssuer != "" || c.OIDCClientID != ""))
 }
 
 // ValidateAuth validates auth fields, requiring that at least one auth method is present.

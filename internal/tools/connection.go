@@ -4,18 +4,25 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/netfoundry/mcp-ziti-golang/internal/auth"
 	"github.com/netfoundry/mcp-ziti-golang/internal/config"
 	"github.com/netfoundry/mcp-ziti-golang/internal/ziticlient"
 )
 
-func registerConnectionTools(s *mcp.Server, zc *ziticlient.Client) {
-	t := &connectionTools{zc: zc}
+func registerConnectionTools(s *mcp.Server, zc *ziticlient.Client, cfg *config.Config) {
+	t := &connectionTools{zc: zc, cfg: cfg}
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "connect-controller",
-		Description: "Connect (or reconnect) to a Ziti controller. Provide exactly one authentication method: identity JSON, username/password, client certificate, external JWT, or OIDC client credentials.",
+		Description: "Connect (or reconnect) to a Ziti controller. Provide exactly one authentication method: identity JSON, username/password, client certificate, external JWT, or OIDC client credentials. For interactive OIDC login via browser, use start-oidc-login instead.",
 	}, t.connect)
 
 	mcp.AddTool(s, &mcp.Tool{
@@ -28,9 +35,35 @@ func registerConnectionTools(s *mcp.Server, zc *ziticlient.Client) {
 		Description: "Get the current connection status, controller URL, and API version compatibility info.",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
 	}, t.status)
+
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "start-oidc-login",
+		Description: "Start an interactive OIDC login using the OAuth 2.0 Device Authorization Grant (RFC 8628). Returns a verification URL and user code for the user to enter in their browser. After the user completes browser authentication, call complete-oidc-login to finish connecting. Parameters are optional if pre-configured at startup via --controller, --oidc-issuer, --oidc-client-id, and --oidc-audience.",
+	}, t.startOIDCLogin)
+
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "complete-oidc-login",
+		Description: "Complete an interactive OIDC login started by start-oidc-login. Polls the IdP token endpoint until the user completes browser authentication, then connects to the controller.",
+	}, t.completeOIDCLogin)
 }
 
-type connectionTools struct{ zc *ziticlient.Client }
+type connectionTools struct {
+	zc        *ziticlient.Client
+	cfg       *config.Config // startup config, may be nil; provides OIDC defaults
+	mu        sync.Mutex
+	oidcState *deviceAuthState
+}
+
+// deviceAuthState holds in-progress device authorization flow state.
+type deviceAuthState struct {
+	tokenEndpoint string
+	deviceCode    string
+	clientID      string
+	interval      int // polling interval in seconds
+	expiresAt     time.Time
+	controllerURL string
+	caFile        string
+}
 
 type connectControllerInput struct {
 	ControllerURL string `json:"controllerUrl,omitempty" jsonschema:"controller URL, e.g. https://ctrl.example.com:1280 — required unless using identityFile or identityJson"`
@@ -108,6 +141,292 @@ func (t *connectionTools) status(_ context.Context, _ *mcp.CallToolRequest, _ ge
 	return t.statusResult()
 }
 
+// --- OAuth 2.0 Device Authorization Grant (RFC 8628) login tools ---
+
+type startOIDCLoginInput struct {
+	ControllerURL string   `json:"controllerUrl,omitempty" jsonschema:"controller URL — uses startup --controller default if omitted"`
+	OIDCIssuer    string   `json:"oidcIssuer,omitempty" jsonschema:"OIDC issuer URL — uses startup --oidc-issuer default if omitted"`
+	OIDCClientID  string   `json:"oidcClientId,omitempty" jsonschema:"OIDC client ID — uses startup --oidc-client-id default if omitted"`
+	OIDCAudience  string   `json:"oidcAudience,omitempty" jsonschema:"OIDC audience (optional) — uses startup --oidc-audience default if omitted"`
+	CAFile        string   `json:"caFile,omitempty" jsonschema:"path to CA bundle PEM file (optional)"`
+	Scopes        []string `json:"scopes,omitempty" jsonschema:"OAuth scopes (defaults to openid)"`
+}
+
+// deviceAuthResponse is the JSON response from the device authorization endpoint.
+type deviceAuthResponse struct {
+	DeviceCode              string `json:"device_code"`
+	UserCode                string `json:"user_code"`
+	VerificationURI         string `json:"verification_uri"`
+	VerificationURIComplete string `json:"verification_uri_complete"`
+	ExpiresIn               int    `json:"expires_in"`
+	Interval                int    `json:"interval"`
+}
+
+func (t *connectionTools) startOIDCLogin(_ context.Context, _ *mcp.CallToolRequest, in startOIDCLoginInput) (*mcp.CallToolResult, any, error) {
+	// Apply defaults from startup config for any fields not provided by the LLM
+	if t.cfg != nil {
+		if in.ControllerURL == "" {
+			in.ControllerURL = t.cfg.ControllerURL
+		}
+		if in.OIDCIssuer == "" {
+			in.OIDCIssuer = t.cfg.OIDCIssuer
+		}
+		if in.OIDCClientID == "" {
+			in.OIDCClientID = t.cfg.OIDCClientID
+		}
+		if in.OIDCAudience == "" {
+			in.OIDCAudience = t.cfg.OIDCAudience
+		}
+		if in.CAFile == "" {
+			in.CAFile = t.cfg.CAFile
+		}
+	}
+
+	// Validate required fields (after applying defaults)
+	if in.ControllerURL == "" {
+		return nil, nil, fmt.Errorf("controllerUrl is required (provide it or configure --controller at startup)")
+	}
+	if in.OIDCIssuer == "" {
+		return nil, nil, fmt.Errorf("oidcIssuer is required (provide it or configure --oidc-issuer at startup)")
+	}
+	if in.OIDCClientID == "" {
+		return nil, nil, fmt.Errorf("oidcClientId is required (provide it or configure --oidc-client-id at startup)")
+	}
+
+	// Discover OIDC endpoints
+	endpoints, err := auth.DiscoverOIDCEndpoints(in.OIDCIssuer)
+	if err != nil {
+		return nil, nil, fmt.Errorf("OIDC discovery for %q: %w", in.OIDCIssuer, err)
+	}
+	if endpoints.DeviceAuthorizationEndpoint == "" {
+		return nil, nil, fmt.Errorf("OIDC issuer %q does not support the device authorization flow (no device_authorization_endpoint in discovery document)", in.OIDCIssuer)
+	}
+
+	// Set up scopes
+	scopes := in.Scopes
+	if len(scopes) == 0 {
+		scopes = []string{"openid"}
+	}
+
+	// Request device code from the IdP
+	formData := url.Values{
+		"client_id": {in.OIDCClientID},
+		"scope":     {strings.Join(scopes, " ")},
+	}
+	if in.OIDCAudience != "" {
+		formData.Set("audience", in.OIDCAudience)
+	}
+
+	//nolint:gosec // URL is from OIDC discovery, not user input
+	resp, err := http.PostForm(endpoints.DeviceAuthorizationEndpoint, formData)
+	if err != nil {
+		return nil, nil, fmt.Errorf("requesting device authorization: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("reading device authorization response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil, fmt.Errorf("device authorization request failed (HTTP %d): %s", resp.StatusCode, string(body))
+	}
+
+	var deviceResp deviceAuthResponse
+	if err := json.Unmarshal(body, &deviceResp); err != nil {
+		return nil, nil, fmt.Errorf("decoding device authorization response: %w", err)
+	}
+
+	if deviceResp.DeviceCode == "" || deviceResp.UserCode == "" {
+		return nil, nil, fmt.Errorf("device authorization response missing device_code or user_code")
+	}
+
+	// Default polling interval to 5 seconds if not specified
+	interval := deviceResp.Interval
+	if interval <= 0 {
+		interval = 5
+	}
+
+	// Default expiry to 5 minutes if not specified
+	expiresIn := deviceResp.ExpiresIn
+	if expiresIn <= 0 {
+		expiresIn = 300
+	}
+
+	// Store state for complete-oidc-login
+	t.mu.Lock()
+	t.oidcState = &deviceAuthState{
+		tokenEndpoint: endpoints.TokenEndpoint,
+		deviceCode:    deviceResp.DeviceCode,
+		clientID:      in.OIDCClientID,
+		interval:      interval,
+		expiresAt:     time.Now().Add(time.Duration(expiresIn) * time.Second),
+		controllerURL: in.ControllerURL,
+		caFile:        in.CAFile,
+	}
+	t.mu.Unlock()
+
+	// Build the user-facing message
+	verificationURL := deviceResp.VerificationURIComplete
+	if verificationURL == "" {
+		verificationURL = deviceResp.VerificationURI
+	}
+
+	message := fmt.Sprintf(
+		"OIDC device login initiated. Please ask the user to:\n\n"+
+			"1. Open this URL in their browser: %s\n"+
+			"2. Enter this code when prompted: **%s**\n"+
+			"3. Complete authentication with the identity provider\n\n"+
+			"After the user completes authentication, call complete-oidc-login to finish connecting.\n"+
+			"The code expires in %d seconds.",
+		verificationURL, deviceResp.UserCode, expiresIn)
+
+	// If we have the complete URI, simplify the instructions
+	if deviceResp.VerificationURIComplete != "" {
+		message = fmt.Sprintf(
+			"OIDC device login initiated. Please ask the user to:\n\n"+
+				"1. Open this URL in their browser: %s\n"+
+				"   (The code **%s** is pre-filled in the URL)\n"+
+				"2. Complete authentication with the identity provider\n\n"+
+				"After the user completes authentication, call complete-oidc-login to finish connecting.\n"+
+				"The code expires in %d seconds.",
+			deviceResp.VerificationURIComplete, deviceResp.UserCode, expiresIn)
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: message},
+		},
+	}, nil, nil
+}
+
+type completeOIDCLoginInput struct{}
+
+// tokenResponse is the JSON response from the token endpoint during device code polling.
+type tokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	Error        string `json:"error"`
+	ErrorDesc    string `json:"error_description"`
+}
+
+func (t *connectionTools) completeOIDCLogin(ctx context.Context, _ *mcp.CallToolRequest, _ completeOIDCLoginInput) (*mcp.CallToolResult, any, error) {
+	t.mu.Lock()
+	state := t.oidcState
+	t.mu.Unlock()
+
+	if state == nil {
+		return nil, nil, fmt.Errorf("no OIDC login in progress — call start-oidc-login first")
+	}
+
+	// Poll the token endpoint until the user completes authentication
+	token, err := pollForToken(ctx, state)
+
+	// Clear state regardless of outcome
+	t.mu.Lock()
+	t.oidcState = nil
+	t.mu.Unlock()
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Build auth result from the access token
+	authResult, err := auth.FromToken(state.controllerURL, token, state.caFile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("building authenticator from token: %w", err)
+	}
+
+	// Connect to the controller
+	if err := t.zc.ConnectWithAuth(authResult); err != nil {
+		return nil, nil, err
+	}
+
+	return t.statusResult()
+}
+
+// pollForToken polls the token endpoint at the specified interval until the user
+// completes authentication, the device code expires, or the context is cancelled.
+func pollForToken(ctx context.Context, state *deviceAuthState) (string, error) {
+	ticker := time.NewTicker(time.Duration(state.interval) * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return "", fmt.Errorf("cancelled while waiting for user to authenticate: %w", ctx.Err())
+		case <-ticker.C:
+			if time.Now().After(state.expiresAt) {
+				return "", fmt.Errorf("device code expired — call start-oidc-login to try again")
+			}
+
+			token, done, err := requestToken(state)
+			if err != nil {
+				return "", err
+			}
+			if done {
+				return token, nil
+			}
+			// Not done yet — continue polling
+		}
+	}
+}
+
+// requestToken makes a single token request. Returns (token, done, error).
+// done=false means keep polling; done=true means we have a token or a terminal error.
+func requestToken(state *deviceAuthState) (string, bool, error) {
+	formData := url.Values{
+		"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
+		"device_code": {state.deviceCode},
+		"client_id":   {state.clientID},
+	}
+
+	//nolint:gosec // URL is from OIDC discovery
+	resp, err := http.PostForm(state.tokenEndpoint, formData)
+	if err != nil {
+		return "", true, fmt.Errorf("polling token endpoint: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", true, fmt.Errorf("reading token response: %w", err)
+	}
+
+	var tokenResp tokenResponse
+	if err := json.Unmarshal(body, &tokenResp); err != nil {
+		return "", true, fmt.Errorf("decoding token response: %w", err)
+	}
+
+	// Check for pending/slow_down responses (keep polling)
+	switch tokenResp.Error {
+	case "authorization_pending":
+		return "", false, nil
+	case "slow_down":
+		// IdP wants us to slow down — the next tick will respect the interval
+		return "", false, nil
+	case "access_denied":
+		return "", true, fmt.Errorf("user denied the authorization request")
+	case "expired_token":
+		return "", true, fmt.Errorf("device code expired — call start-oidc-login to try again")
+	case "":
+		// No error — we should have a token
+		if tokenResp.AccessToken == "" {
+			return "", true, fmt.Errorf("token response missing access_token")
+		}
+		return tokenResp.AccessToken, true, nil
+	default:
+		desc := tokenResp.ErrorDesc
+		if desc == "" {
+			desc = tokenResp.Error
+		}
+		return "", true, fmt.Errorf("token endpoint error: %s", desc)
+	}
+}
+
 // statusResult builds a tool result with a human-readable compatibility summary
 // as a separate text block (so the LLM relays it to the user) followed by the
 // full JSON details.
@@ -152,7 +471,14 @@ func (t *connectionTools) statusResult() (*mcp.CallToolResult, any, error) {
 				info.CompatibilityNote)
 		}
 	} else if !t.zc.Connected() {
-		summary = "Not connected to a Ziti controller. Use connect-controller to connect."
+		summary = "Not connected to a Ziti controller. Connect before calling any other tools.\n\n" +
+			"IMPORTANT: Present ALL of the following options to the user as separate choices. Do NOT combine or merge them:\n" +
+			"  1. Interactive browser login — user opens a link and authenticates in their browser (best for human users with a 3rd-party identity provider)\n" +
+			"  2. Identity JSON file — provide a path to a Ziti identity .json file on disk\n" +
+			"  3. Username and password — authenticate with the controller's built-in user database\n" +
+			"  4. Client certificate — authenticate with a TLS client cert and private key\n" +
+			"  5. External JWT token — authenticate with a pre-issued JWT string\n" +
+			"  6. OIDC client credentials — authenticate with a client ID and secret from an identity provider (for service accounts)"
 	} else {
 		summary = fmt.Sprintf("Connected to %s. Version info unavailable.", t.zc.ControllerURL())
 	}

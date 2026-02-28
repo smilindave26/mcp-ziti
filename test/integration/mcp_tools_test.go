@@ -15,7 +15,7 @@ func newMCPSession(t *testing.T) (*mcp.ClientSession, func()) {
 	t.Helper()
 
 	server := mcp.NewServer(&mcp.Implementation{Name: "test-ziti-mcp", Version: "0.0.0"}, nil)
-	tools.RegisterAll(server, testClient)
+	tools.RegisterAll(server, testClient, nil)
 
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
 	ctx := context.Background()

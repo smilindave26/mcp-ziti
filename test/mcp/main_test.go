@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	srv := mcp.NewServer(&mcp.Implementation{Name: "mcp-ziti", Version: "test"}, nil)
-	tools.RegisterAll(srv, ziticlient.NewForTest())
+	tools.RegisterAll(srv, ziticlient.NewForTest(), nil)
 
 	ct, st := mcp.NewInMemoryTransports()
 

@@ -308,83 +308,114 @@ func TestFromExtJWT_EmptyFile(t *testing.T) {
 	}
 }
 
-// discoverTokenURL tests
+// DiscoverOIDCEndpoints tests
 
-func TestDiscoverTokenURL_Success(t *testing.T) {
+func TestDiscoverOIDCEndpoints_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/.well-known/openid-configuration" {
 			http.NotFound(w, r)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"token_endpoint":"https://idp.example.com/oauth/token"}`)
+		fmt.Fprintf(w, `{"token_endpoint":"https://idp.example.com/oauth/token","authorization_endpoint":"https://idp.example.com/authorize","device_authorization_endpoint":"https://idp.example.com/oauth/device/code"}`)
 	}))
 	defer srv.Close()
 
-	tokenURL, err := discoverTokenURL(srv.URL)
+	endpoints, err := DiscoverOIDCEndpoints(srv.URL)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if tokenURL != "https://idp.example.com/oauth/token" {
-		t.Errorf("expected token URL %q, got %q", "https://idp.example.com/oauth/token", tokenURL)
+	if endpoints.TokenEndpoint != "https://idp.example.com/oauth/token" {
+		t.Errorf("expected token URL %q, got %q", "https://idp.example.com/oauth/token", endpoints.TokenEndpoint)
+	}
+	if endpoints.AuthorizationEndpoint != "https://idp.example.com/authorize" {
+		t.Errorf("expected authorization URL %q, got %q", "https://idp.example.com/authorize", endpoints.AuthorizationEndpoint)
+	}
+	if endpoints.DeviceAuthorizationEndpoint != "https://idp.example.com/oauth/device/code" {
+		t.Errorf("expected device auth URL %q, got %q", "https://idp.example.com/oauth/device/code", endpoints.DeviceAuthorizationEndpoint)
 	}
 }
 
-func TestDiscoverTokenURL_TrailingSlashIssuer(t *testing.T) {
+func TestDiscoverOIDCEndpoints_TrailingSlashIssuer(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/.well-known/openid-configuration" {
 			http.NotFound(w, r)
 			return
 		}
-		fmt.Fprintf(w, `{"token_endpoint":"https://idp.example.com/token"}`)
+		fmt.Fprintf(w, `{"token_endpoint":"https://idp.example.com/token","device_authorization_endpoint":"https://idp.example.com/device"}`)
 	}))
 	defer srv.Close()
 
-	// Issuer with trailing slash — discoverTokenURL should strip it
-	tokenURL, err := discoverTokenURL(srv.URL + "/")
+	endpoints, err := DiscoverOIDCEndpoints(srv.URL + "/")
 	if err != nil {
 		t.Fatalf("unexpected error with trailing-slash issuer: %v", err)
 	}
-	if tokenURL == "" {
+	if endpoints.TokenEndpoint == "" {
 		t.Error("expected non-empty token URL")
+	}
+	if endpoints.DeviceAuthorizationEndpoint == "" {
+		t.Error("expected non-empty device authorization URL")
 	}
 }
 
-func TestDiscoverTokenURL_Non200Response(t *testing.T) {
+func TestDiscoverOIDCEndpoints_Non200Response(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 	}))
 	defer srv.Close()
 
-	_, err := discoverTokenURL(srv.URL)
+	_, err := DiscoverOIDCEndpoints(srv.URL)
 	if err == nil {
 		t.Error("expected error for non-200 OIDC discovery response")
 	}
 }
 
-func TestDiscoverTokenURL_InvalidJSON(t *testing.T) {
+func TestDiscoverOIDCEndpoints_InvalidJSON(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "this is not json")
 	}))
 	defer srv.Close()
 
-	_, err := discoverTokenURL(srv.URL)
+	_, err := DiscoverOIDCEndpoints(srv.URL)
 	if err == nil {
 		t.Error("expected error for invalid JSON in discovery document")
 	}
 }
 
-func TestDiscoverTokenURL_MissingTokenEndpoint(t *testing.T) {
+func TestDiscoverOIDCEndpoints_MissingTokenEndpoint(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"issuer":"https://idp.example.com"}`)
+		fmt.Fprint(w, `{"issuer":"https://idp.example.com","authorization_endpoint":"https://idp.example.com/authorize"}`)
 	}))
 	defer srv.Close()
 
-	_, err := discoverTokenURL(srv.URL)
+	_, err := DiscoverOIDCEndpoints(srv.URL)
 	if err == nil {
 		t.Error("expected error when token_endpoint is absent from discovery document")
+	}
+}
+
+func TestDiscoverOIDCEndpoints_OptionalEndpointsMissing(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"token_endpoint":"https://idp.example.com/oauth/token"}`)
+	}))
+	defer srv.Close()
+
+	endpoints, err := DiscoverOIDCEndpoints(srv.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// authorization_endpoint and device_authorization_endpoint are optional
+	if endpoints.TokenEndpoint != "https://idp.example.com/oauth/token" {
+		t.Errorf("expected token URL %q, got %q", "https://idp.example.com/oauth/token", endpoints.TokenEndpoint)
+	}
+	if endpoints.AuthorizationEndpoint != "" {
+		t.Errorf("expected empty authorization URL, got %q", endpoints.AuthorizationEndpoint)
+	}
+	if endpoints.DeviceAuthorizationEndpoint != "" {
+		t.Errorf("expected empty device authorization URL, got %q", endpoints.DeviceAuthorizationEndpoint)
 	}
 }
 
