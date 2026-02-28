@@ -1,6 +1,7 @@
 package ziticlient
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,10 +12,39 @@ import (
 	"github.com/netfoundry/mcp-ziti-golang/internal/auth"
 	"github.com/netfoundry/mcp-ziti-golang/internal/config"
 	"github.com/openziti/edge-api/rest_management_api_client"
+	mgmtInfo "github.com/openziti/edge-api/rest_management_api_client/informational"
 	"github.com/openziti/edge-api/rest_util"
 )
 
-const refreshWindow = 5 * time.Minute
+const (
+	refreshWindow = 5 * time.Minute
+
+	// RequiredAPIPath is the management API path this client was built against.
+	RequiredAPIPath = "/edge/management/v1"
+
+	// EdgeAPIVersion is the version of the edge-api Go module used by this client.
+	EdgeAPIVersion = "v0.26.56"
+)
+
+// APIVersionEntry describes a single API version advertised by the controller.
+type APIVersionEntry struct {
+	Group   string `json:"group"`
+	Label   string `json:"label"`
+	Path    string `json:"path"`
+	Version string `json:"version,omitempty"`
+}
+
+// VersionInfo holds the controller version and API compatibility assessment.
+type VersionInfo struct {
+	ControllerVersion  string            `json:"controllerVersion"`
+	BuildDate          string            `json:"buildDate,omitempty"`
+	RuntimeVersion     string            `json:"runtimeVersion,omitempty"`
+	APIVersions        []APIVersionEntry `json:"controllerAPIVersions"`
+	ThisToolBuiltFor   string            `json:"thisToolBuiltFor"`
+	EdgeAPIModule      string            `json:"edgeApiModule"`
+	Compatible         bool              `json:"compatible"`
+	CompatibilityNote  string            `json:"compatibilityNote"`
+}
 
 // ErrNotConnected is returned by Mgmt() when the client has no active controller connection.
 var ErrNotConnected = errors.New("not connected to a Ziti controller — use the connect-controller tool to connect")
@@ -28,6 +58,7 @@ type Client struct {
 	mgmt          *rest_management_api_client.ZitiEdgeManagement
 	expiresAt     time.Time
 	connected     bool
+	versionInfo   *VersionInfo
 	mu            sync.Mutex
 }
 
@@ -66,6 +97,7 @@ func New(cfg *config.Config) (*Client, error) {
 	}
 
 	c.connected = true
+	c.fetchAndLogVersionInfo()
 	return c, nil
 }
 
@@ -101,6 +133,7 @@ func (c *Client) Connect(cfg *config.Config) error {
 	}
 
 	c.connected = true
+	c.fetchAndLogVersionInfo()
 	return nil
 }
 
@@ -119,6 +152,7 @@ func (c *Client) Disconnect() error {
 	c.mgmt = nil
 	c.expiresAt = time.Time{}
 	c.connected = false
+	c.versionInfo = nil
 
 	slog.Info("disconnected from controller")
 	return nil
@@ -139,6 +173,97 @@ func (c *Client) ControllerURL() string {
 		return ""
 	}
 	return c.ctrlURL.String()
+}
+
+// GetVersionInfo returns the cached version info from the last successful connection,
+// or nil if disconnected or version info was not fetched.
+func (c *Client) GetVersionInfo() *VersionInfo {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.versionInfo
+}
+
+// fetchAndLogVersionInfo fetches version info from the controller and logs it.
+// Must NOT be called with c.mu held (it calls Mgmt which acquires the lock).
+func (c *Client) fetchAndLogVersionInfo() {
+	info, err := c.fetchVersionInfo()
+	if err != nil {
+		slog.Warn("could not fetch controller version info", "error", err)
+		return
+	}
+
+	c.mu.Lock()
+	c.versionInfo = info
+	c.mu.Unlock()
+
+	slog.Info("controller version info",
+		"controllerVersion", info.ControllerVersion,
+		"compatible", info.Compatible,
+		"thisToolBuiltFor", info.ThisToolBuiltFor,
+		"edgeApiModule", info.EdgeAPIModule,
+	)
+	if !info.Compatible {
+		slog.Warn("API version mismatch", "note", info.CompatibilityNote)
+	}
+}
+
+// fetchVersionInfo calls the controller's /version endpoint and builds a VersionInfo.
+func (c *Client) fetchVersionInfo() (*VersionInfo, error) {
+	mgmt, err := c.Mgmt()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := mgmt.Informational.ListVersion(
+		mgmtInfo.NewListVersionParams().WithContext(context.Background()))
+	if err != nil {
+		return nil, fmt.Errorf("list version: %w", err)
+	}
+
+	data := resp.GetPayload().Data
+
+	info := &VersionInfo{
+		ControllerVersion: data.Version,
+		BuildDate:         data.BuildDate,
+		RuntimeVersion:    data.RuntimeVersion,
+		ThisToolBuiltFor:  RequiredAPIPath,
+		EdgeAPIModule:     EdgeAPIVersion,
+	}
+
+	// Flatten apiVersions and check compatibility.
+	for group, versions := range data.APIVersions {
+		for label, apiVer := range versions {
+			entry := APIVersionEntry{
+				Group:   group,
+				Label:   label,
+				Version: apiVer.Version,
+			}
+			if apiVer.Path != nil {
+				entry.Path = *apiVer.Path
+				if *apiVer.Path == RequiredAPIPath {
+					info.Compatible = true
+				}
+			}
+			info.APIVersions = append(info.APIVersions, entry)
+		}
+	}
+
+	if info.Compatible {
+		info.CompatibilityNote = fmt.Sprintf(
+			"Controller %s advertises %s which matches this tool's API path. "+
+				"The controller may have added new required fields since this tool's "+
+				"client library (edge-api %s) was generated; if you see validation "+
+				"errors on create/update operations, the client library may need updating.",
+			data.Version, RequiredAPIPath, EdgeAPIVersion)
+	} else {
+		info.CompatibilityNote = fmt.Sprintf(
+			"WARNING: Controller %s does not advertise %s. "+
+				"This tool was built for that API path and may not work correctly. "+
+				"Operations may fail with unexpected errors.",
+			data.Version, RequiredAPIPath)
+	}
+
+	return info, nil
 }
 
 // Mgmt returns the management API client, refreshing the session if it is
