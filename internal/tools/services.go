@@ -99,6 +99,7 @@ type createServiceInput struct {
 	Name               string   `json:"name"                        jsonschema:"required,service name"`
 	EncryptionRequired bool     `json:"encryptionRequired"          jsonschema:"required,enforce end-to-end encryption on all connections"`
 	RoleAttributes     []string `json:"roleAttributes,omitempty"    jsonschema:"role attribute strings"`
+	Configs            []string `json:"configs,omitempty"            jsonschema:"list of config IDs to attach to this service"`
 }
 
 func (t *serviceTools) create(ctx context.Context, _ *mcp.CallToolRequest, in createServiceInput) (*mcp.CallToolResult, any, error) {
@@ -110,6 +111,7 @@ func (t *serviceTools) create(ctx context.Context, _ *mcp.CallToolRequest, in cr
 		Name:               &in.Name,
 		EncryptionRequired: &in.EncryptionRequired,
 		RoleAttributes:     in.RoleAttributes,
+		Configs:            in.Configs,
 	}
 
 	mgmt, err := t.zc.Mgmt()
@@ -130,6 +132,7 @@ type updateServiceInput struct {
 	Name               string   `json:"name"                        jsonschema:"required,new service name"`
 	EncryptionRequired bool     `json:"encryptionRequired"          jsonschema:"whether to enforce end-to-end encryption"`
 	RoleAttributes     []string `json:"roleAttributes,omitempty"    jsonschema:"role attribute strings"`
+	Configs            []string `json:"configs,omitempty"            jsonschema:"list of config IDs to attach to this service"`
 }
 
 func (t *serviceTools) update(ctx context.Context, _ *mcp.CallToolRequest, in updateServiceInput) (*mcp.CallToolResult, any, error) {
@@ -144,6 +147,7 @@ func (t *serviceTools) update(ctx context.Context, _ *mcp.CallToolRequest, in up
 		Name:               &in.Name,
 		EncryptionRequired: in.EncryptionRequired,
 		RoleAttributes:     in.RoleAttributes,
+		Configs:            in.Configs,
 	}
 
 	mgmt, err := t.zc.Mgmt()
