@@ -144,10 +144,13 @@ func makeAuthPolicy(name string) *rest_model.AuthPolicyCreate {
 				AllowedSigners: []string{},
 			},
 			Updb: &rest_model.AuthPolicyPrimaryUpdb{
-				Allowed:            ptr(false),
-				RequireMixedCase:   ptr(false),
-				RequireNumberChar:  ptr(false),
-				RequireSpecialChar: ptr(false),
+				Allowed:                ptr(false),
+				LockoutDurationMinutes: ptr(int64(0)),
+				MaxAttempts:            ptr(int64(0)),
+				MinPasswordLength:      ptr(int64(5)),
+				RequireMixedCase:       ptr(false),
+				RequireNumberChar:      ptr(false),
+				RequireSpecialChar:     ptr(false),
 			},
 		},
 		Secondary: &rest_model.AuthPolicySecondary{

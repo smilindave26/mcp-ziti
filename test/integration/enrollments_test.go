@@ -41,7 +41,7 @@ func TestCreateAndListEnrollment(t *testing.T) {
 	}()
 
 	listResp, err := mgmt.Enrollment.ListEnrollments(
-		mgmtEnroll.NewListEnrollmentsParams().WithContext(ctx).WithFilter(ptr(`identityId = "`+identityID+`"`)), nil)
+		mgmtEnroll.NewListEnrollmentsParams().WithContext(ctx).WithFilter(ptr(`id = "`+enrollmentID+`"`)), nil)
 	if err != nil {
 		t.Fatalf("list enrollments: %v", err)
 	}
