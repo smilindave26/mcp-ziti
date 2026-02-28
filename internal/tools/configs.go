@@ -219,9 +219,9 @@ func (t *configTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getCon
 }
 
 type createConfigInput struct {
-	Name         string `json:"name"         jsonschema:"required,config name"`
-	ConfigTypeID string `json:"configTypeId" jsonschema:"required,ID of the config type this config conforms to"`
-	Data         any    `json:"data"         jsonschema:"required,JSON object containing the config data"`
+	Name         string         `json:"name"         jsonschema:"required,config name"`
+	ConfigTypeID string         `json:"configTypeId" jsonschema:"required,ID of the config type this config conforms to"`
+	Data         map[string]any `json:"data"         jsonschema:"required,JSON object containing the config data"`
 }
 
 func (t *configTools) create(ctx context.Context, _ *mcp.CallToolRequest, in createConfigInput) (*mcp.CallToolResult, any, error) {
@@ -235,10 +235,11 @@ func (t *configTools) create(ctx context.Context, _ *mcp.CallToolRequest, in cre
 		return nil, nil, fmt.Errorf("data is required")
 	}
 
+	var data any = in.Data
 	body := &rest_model.ConfigCreate{
 		Name:         &in.Name,
 		ConfigTypeID: &in.ConfigTypeID,
-		Data:         &in.Data,
+		Data:         &data,
 	}
 
 	mgmt, err := t.zc.Mgmt()
@@ -255,9 +256,9 @@ func (t *configTools) create(ctx context.Context, _ *mcp.CallToolRequest, in cre
 }
 
 type updateConfigInput struct {
-	ID   string `json:"id"   jsonschema:"required,config ID to update"`
-	Name string `json:"name" jsonschema:"required,config name"`
-	Data any    `json:"data" jsonschema:"required,JSON object containing the updated config data"`
+	ID   string         `json:"id"   jsonschema:"required,config ID to update"`
+	Name string         `json:"name" jsonschema:"required,config name"`
+	Data map[string]any `json:"data" jsonschema:"required,JSON object containing the updated config data"`
 }
 
 func (t *configTools) update(ctx context.Context, _ *mcp.CallToolRequest, in updateConfigInput) (*mcp.CallToolResult, any, error) {
@@ -271,9 +272,10 @@ func (t *configTools) update(ctx context.Context, _ *mcp.CallToolRequest, in upd
 		return nil, nil, fmt.Errorf("data is required")
 	}
 
+	var updateData any = in.Data
 	body := &rest_model.ConfigUpdate{
 		Name: &in.Name,
-		Data: &in.Data,
+		Data: &updateData,
 	}
 
 	mgmt, err := t.zc.Mgmt()
