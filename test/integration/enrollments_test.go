@@ -86,7 +86,7 @@ func TestGetEnrollment(t *testing.T) {
 		t.Fatalf("get enrollment: %v", err)
 	}
 	if *getResp.GetPayload().Data.ID != enrollmentID {
-		t.Errorf("expected id %q, got %q", enrollmentID, getResp.GetPayload().Data.ID)
+		t.Errorf("expected id %q, got %q", enrollmentID, *getResp.GetPayload().Data.ID)
 	}
 }
 

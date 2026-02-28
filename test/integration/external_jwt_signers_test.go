@@ -72,7 +72,7 @@ func TestGetExternalJWTSigner(t *testing.T) {
 		t.Fatalf("get external JWT signer: %v", err)
 	}
 	if *getResp.GetPayload().Data.ID != ejsID {
-		t.Errorf("expected id %q, got %q", ejsID, getResp.GetPayload().Data.ID)
+		t.Errorf("expected id %q, got %q", ejsID, *getResp.GetPayload().Data.ID)
 	}
 }
 

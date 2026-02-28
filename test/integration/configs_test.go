@@ -62,7 +62,7 @@ func TestGetConfigType(t *testing.T) {
 		t.Fatalf("get config type: %v", err)
 	}
 	if *getResp.GetPayload().Data.ID != ctID {
-		t.Errorf("expected id %q, got %q", ctID, getResp.GetPayload().Data.ID)
+		t.Errorf("expected id %q, got %q", ctID, *getResp.GetPayload().Data.ID)
 	}
 }
 
@@ -146,7 +146,7 @@ func TestGetConfig(t *testing.T) {
 		t.Fatalf("get config: %v", err)
 	}
 	if *getResp.GetPayload().Data.ID != cfgID {
-		t.Errorf("expected id %q, got %q", cfgID, getResp.GetPayload().Data.ID)
+		t.Errorf("expected id %q, got %q", cfgID, *getResp.GetPayload().Data.ID)
 	}
 }
 

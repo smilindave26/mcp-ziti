@@ -58,7 +58,7 @@ func TestGetAuthPolicy(t *testing.T) {
 		t.Fatalf("get auth policy: %v", err)
 	}
 	if *getResp.GetPayload().Data.ID != apID {
-		t.Errorf("expected id %q, got %q", apID, getResp.GetPayload().Data.ID)
+		t.Errorf("expected id %q, got %q", apID, *getResp.GetPayload().Data.ID)
 	}
 }
 

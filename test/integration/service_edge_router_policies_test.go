@@ -70,7 +70,7 @@ func TestGetServiceEdgeRouterPolicy(t *testing.T) {
 		t.Fatalf("get service edge router policy: %v", err)
 	}
 	if *getResp.GetPayload().Data.ID != serpID {
-		t.Errorf("expected id %q, got %q", serpID, getResp.GetPayload().Data.ID)
+		t.Errorf("expected id %q, got %q", serpID, *getResp.GetPayload().Data.ID)
 	}
 }
 

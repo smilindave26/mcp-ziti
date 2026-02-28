@@ -85,7 +85,7 @@ func TestGetCA(t *testing.T) {
 		t.Fatalf("get CA: %v", err)
 	}
 	if *getResp.GetPayload().Data.ID != caID {
-		t.Errorf("expected id %q, got %q", caID, getResp.GetPayload().Data.ID)
+		t.Errorf("expected id %q, got %q", caID, *getResp.GetPayload().Data.ID)
 	}
 }
 
