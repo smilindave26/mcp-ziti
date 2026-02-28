@@ -139,10 +139,14 @@ func makeAuthPolicy(name string) *rest_model.AuthPolicyCreate {
 				Allowed:           ptr(false),
 				AllowExpiredCerts: ptr(false),
 			},
+			ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
+				Allowed:        ptr(false),
+				AllowedSigners: []string{},
+			},
 			Updb: &rest_model.AuthPolicyPrimaryUpdb{
-				Allowed:           ptr(false),
-				RequireMixedCase:  ptr(false),
-				RequireNumberChar: ptr(false),
+				Allowed:            ptr(false),
+				RequireMixedCase:   ptr(false),
+				RequireNumberChar:  ptr(false),
 				RequireSpecialChar: ptr(false),
 			},
 		},
