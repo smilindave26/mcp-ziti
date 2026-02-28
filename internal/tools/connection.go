@@ -2,6 +2,8 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/netfoundry/mcp-ziti-golang/internal/config"
@@ -79,7 +81,7 @@ func (t *connectionTools) connect(_ context.Context, _ *mcp.CallToolRequest, in 
 		return nil, nil, err
 	}
 
-	return jsonResult(t.buildStatusResponse())
+	return t.statusResult()
 }
 
 type disconnectControllerInput struct{}
@@ -96,26 +98,67 @@ func (t *connectionTools) disconnect(_ context.Context, _ *mcp.CallToolRequest, 
 type getControllerStatusInput struct{}
 
 func (t *connectionTools) status(_ context.Context, _ *mcp.CallToolRequest, _ getControllerStatusInput) (*mcp.CallToolResult, any, error) {
-	return jsonResult(t.buildStatusResponse())
+	return t.statusResult()
 }
 
-// buildStatusResponse returns a map with connection status and version info (if connected).
-func (t *connectionTools) buildStatusResponse() map[string]any {
-	result := map[string]any{
+// statusResult builds a tool result with a human-readable compatibility summary
+// as a separate text block (so the LLM relays it to the user) followed by the
+// full JSON details.
+func (t *connectionTools) statusResult() (*mcp.CallToolResult, any, error) {
+	data := map[string]any{
 		"connected":     t.zc.Connected(),
 		"controllerUrl": t.zc.ControllerURL(),
 	}
 
+	var summary string
 	if info := t.zc.GetVersionInfo(); info != nil {
-		result["controllerVersion"] = info.ControllerVersion
-		result["buildDate"] = info.BuildDate
-		result["runtimeVersion"] = info.RuntimeVersion
-		result["controllerAPIVersions"] = info.APIVersions
-		result["thisToolBuiltFor"] = info.ThisToolBuiltFor
-		result["edgeApiModule"] = info.EdgeAPIModule
-		result["compatible"] = info.Compatible
-		result["compatibilityNote"] = info.CompatibilityNote
+		data["controllerVersion"] = info.ControllerVersion
+		data["buildDate"] = info.BuildDate
+		data["runtimeVersion"] = info.RuntimeVersion
+		data["controllerAPIVersions"] = info.APIVersions
+		data["thisToolBuiltFor"] = info.ThisToolBuiltFor
+		data["edgeApiModule"] = info.EdgeAPIModule
+		data["compatible"] = info.Compatible
+		data["compatibilityNote"] = info.CompatibilityNote
+
+		if info.Compatible {
+			summary = fmt.Sprintf(
+				"Connected to controller %s at %s.\n\n"+
+					"API Compatibility: COMPATIBLE\n"+
+					"  This tool uses: %s (edge-api %s)\n"+
+					"  Controller supports: %s\n\n"+
+					"Note: %s",
+				info.ControllerVersion, t.zc.ControllerURL(),
+				info.ThisToolBuiltFor, info.EdgeAPIModule,
+				info.ThisToolBuiltFor,
+				info.CompatibilityNote)
+		} else {
+			summary = fmt.Sprintf(
+				"Connected to controller %s at %s.\n\n"+
+					"API Compatibility: NOT COMPATIBLE — OPERATIONS MAY FAIL\n"+
+					"  This tool uses: %s (edge-api %s)\n"+
+					"  Controller does NOT advertise %s\n\n"+
+					"Warning: %s",
+				info.ControllerVersion, t.zc.ControllerURL(),
+				info.ThisToolBuiltFor, info.EdgeAPIModule,
+				info.ThisToolBuiltFor,
+				info.CompatibilityNote)
+		}
+	} else if !t.zc.Connected() {
+		summary = "Not connected to a Ziti controller. Use connect-controller to connect."
+	} else {
+		summary = fmt.Sprintf("Connected to %s. Version info unavailable.", t.zc.ControllerURL())
 	}
 
-	return result
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshal result: %w", err)
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: summary},
+			&mcp.TextContent{Text: string(jsonBytes)},
+		},
+	}, nil, nil
 }
