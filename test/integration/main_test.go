@@ -39,8 +39,10 @@ func TestMain(m *testing.M) {
 	// Start ziti edge quickstart
 	cmd := exec.Command("ziti", "edge", "quickstart",
 		"--home", tmpDir,
-		"--ctrl-address", "localhost:1280",
-		"--router-address", "localhost:3022",
+		"--ctrl-address", "localhost",
+		"--ctrl-port", "1280",
+		"--router-address", "localhost",
+		"--router-port", "3022",
 	)
 	cmd.Stdout = os.Stderr // redirect process output to stderr, keep stdout clean
 	cmd.Stderr = os.Stderr
