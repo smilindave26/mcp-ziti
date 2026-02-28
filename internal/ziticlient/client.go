@@ -104,6 +104,26 @@ func (c *Client) Connect(cfg *config.Config) error {
 	return nil
 }
 
+// Disconnect clears the active controller connection. Thread-safe.
+// Returns ErrNotConnected if already disconnected.
+func (c *Client) Disconnect() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if !c.connected {
+		return ErrNotConnected
+	}
+
+	c.authenticator = nil
+	c.ctrlURL = nil
+	c.mgmt = nil
+	c.expiresAt = time.Time{}
+	c.connected = false
+
+	slog.Info("disconnected from controller")
+	return nil
+}
+
 // Connected returns true if the client has an active controller connection.
 func (c *Client) Connected() bool {
 	c.mu.Lock()

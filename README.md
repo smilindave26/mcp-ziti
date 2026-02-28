@@ -11,6 +11,7 @@ The server communicates over STDIO. It can authenticate with an OpenZiti control
 | Category | Tool | Description |
 |---|---|---|
 | **Connection** | `connect-controller` | Connect (or reconnect) to a Ziti controller at runtime |
+| | `disconnect-controller` | Disconnect from the current controller and clear credentials |
 | | `get-controller-status` | Get the current connection status and controller URL |
 | **Identities** | `list-identities` | List identities with optional filter and pagination |
 | | `get-identity` | Get a single identity by ID |

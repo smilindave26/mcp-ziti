@@ -75,6 +75,38 @@ func TestConnected_Disconnected(t *testing.T) {
 	}
 }
 
+func TestDisconnect(t *testing.T) {
+	mock := &mockAuthenticator{token: "test-token", expiresIn: 30 * time.Minute}
+	c := newTestClient(t, mock)
+
+	if !c.Connected() {
+		t.Fatal("expected Connected() == true after construction")
+	}
+
+	if err := c.Disconnect(); err != nil {
+		t.Fatalf("Disconnect() returned error: %v", err)
+	}
+
+	if c.Connected() {
+		t.Error("expected Connected() == false after Disconnect()")
+	}
+	if c.ControllerURL() != "" {
+		t.Errorf("expected empty ControllerURL after Disconnect(), got %q", c.ControllerURL())
+	}
+
+	_, err := c.Mgmt()
+	if err != ErrNotConnected {
+		t.Errorf("expected ErrNotConnected after Disconnect(), got %v", err)
+	}
+}
+
+func TestDisconnect_AlreadyDisconnected(t *testing.T) {
+	c := &Client{}
+	if err := c.Disconnect(); err != ErrNotConnected {
+		t.Errorf("expected ErrNotConnected, got %v", err)
+	}
+}
+
 func TestControllerURL_Disconnected(t *testing.T) {
 	c := &Client{}
 	if got := c.ControllerURL(); got != "" {

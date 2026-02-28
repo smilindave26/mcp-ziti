@@ -17,6 +17,11 @@ func registerConnectionTools(s *mcp.Server, zc *ziticlient.Client) {
 	}, t.connect)
 
 	mcp.AddTool(s, &mcp.Tool{
+		Name:        "disconnect-controller",
+		Description: "Disconnect from the current Ziti controller, clearing all credentials and session state.",
+	}, t.disconnect)
+
+	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get-controller-status",
 		Description: "Get the current connection status and controller URL.",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
@@ -77,6 +82,17 @@ func (t *connectionTools) connect(_ context.Context, _ *mcp.CallToolRequest, in 
 	return jsonResult(map[string]any{
 		"connected":     true,
 		"controllerUrl": t.zc.ControllerURL(),
+	})
+}
+
+type disconnectControllerInput struct{}
+
+func (t *connectionTools) disconnect(_ context.Context, _ *mcp.CallToolRequest, _ disconnectControllerInput) (*mcp.CallToolResult, any, error) {
+	if err := t.zc.Disconnect(); err != nil {
+		return nil, nil, err
+	}
+	return jsonResult(map[string]any{
+		"connected": false,
 	})
 }
 
