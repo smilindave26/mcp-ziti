@@ -119,7 +119,6 @@ func (c *Client) Connect(cfg *config.Config) error {
 	}
 
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	// Swap authenticator and URL for the new connection attempt.
 	oldAuth, oldURL, oldConnected := c.authenticator, c.ctrlURL, c.connected
@@ -129,10 +128,14 @@ func (c *Client) Connect(cfg *config.Config) error {
 	if err := c.authenticate(); err != nil {
 		// Restore previous state on failure.
 		c.authenticator, c.ctrlURL, c.connected = oldAuth, oldURL, oldConnected
+		c.mu.Unlock()
 		return fmt.Errorf("authentication failed: %w", err)
 	}
 
 	c.connected = true
+	c.mu.Unlock()
+
+	// Fetch version info outside the lock (it calls Mgmt which acquires it).
 	c.fetchAndLogVersionInfo()
 	return nil
 }
