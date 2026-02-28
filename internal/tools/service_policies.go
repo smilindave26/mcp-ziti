@@ -70,7 +70,7 @@ func (t *servicePolicyTools) list(ctx context.Context, _ *mcp.CallToolRequest, i
 	if err != nil {
 		return nil, nil, fmt.Errorf("list service policies: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getServicePolicyInput struct {
@@ -92,7 +92,7 @@ func (t *servicePolicyTools) get(ctx context.Context, _ *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, nil, fmt.Errorf("get service policy %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type createServicePolicyInput struct {
@@ -134,7 +134,7 @@ func (t *servicePolicyTools) create(ctx context.Context, _ *mcp.CallToolRequest,
 	if err != nil {
 		return nil, nil, fmt.Errorf("create service policy: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type updateServicePolicyInput struct {
@@ -180,7 +180,7 @@ func (t *servicePolicyTools) update(ctx context.Context, _ *mcp.CallToolRequest,
 	if err != nil {
 		return nil, nil, fmt.Errorf("update service policy %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "updated", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
 }
 
 type deleteServicePolicyInput struct {
@@ -202,5 +202,5 @@ func (t *servicePolicyTools) delete(ctx context.Context, _ *mcp.CallToolRequest,
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete service policy %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

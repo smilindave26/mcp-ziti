@@ -63,7 +63,7 @@ func (t *terminatorTools) list(ctx context.Context, _ *mcp.CallToolRequest, in l
 	if err != nil {
 		return nil, nil, fmt.Errorf("list terminators: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getTerminatorInput struct {
@@ -85,7 +85,7 @@ func (t *terminatorTools) get(ctx context.Context, _ *mcp.CallToolRequest, in ge
 	if err != nil {
 		return nil, nil, fmt.Errorf("get terminator %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type createTerminatorInput struct {
@@ -136,7 +136,7 @@ func (t *terminatorTools) create(ctx context.Context, _ *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, nil, fmt.Errorf("create terminator: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type deleteTerminatorInput struct {
@@ -158,5 +158,5 @@ func (t *terminatorTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete terminator %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

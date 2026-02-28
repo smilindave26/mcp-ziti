@@ -69,7 +69,7 @@ func (t *externalJWTSignerTools) list(ctx context.Context, _ *mcp.CallToolReques
 	if err != nil {
 		return nil, nil, fmt.Errorf("list external JWT signers: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getEJSInput struct {
@@ -91,7 +91,7 @@ func (t *externalJWTSignerTools) get(ctx context.Context, _ *mcp.CallToolRequest
 	if err != nil {
 		return nil, nil, fmt.Errorf("get external JWT signer %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type createEJSInput struct {
@@ -161,7 +161,7 @@ func (t *externalJWTSignerTools) create(ctx context.Context, _ *mcp.CallToolRequ
 	if err != nil {
 		return nil, nil, fmt.Errorf("create external JWT signer: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type updateEJSInput struct {
@@ -232,7 +232,7 @@ func (t *externalJWTSignerTools) update(ctx context.Context, _ *mcp.CallToolRequ
 	if err != nil {
 		return nil, nil, fmt.Errorf("update external JWT signer %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "updated", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
 }
 
 type deleteEJSInput struct {
@@ -254,5 +254,5 @@ func (t *externalJWTSignerTools) delete(ctx context.Context, _ *mcp.CallToolRequ
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete external JWT signer %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

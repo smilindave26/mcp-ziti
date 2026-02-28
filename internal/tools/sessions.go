@@ -57,7 +57,7 @@ func (t *sessionTools) list(ctx context.Context, _ *mcp.CallToolRequest, in list
 	if err != nil {
 		return nil, nil, fmt.Errorf("list sessions: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getSessionInput struct {
@@ -79,7 +79,7 @@ func (t *sessionTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getSe
 	if err != nil {
 		return nil, nil, fmt.Errorf("get session %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type deleteSessionInput struct {
@@ -101,5 +101,5 @@ func (t *sessionTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in de
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete session %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

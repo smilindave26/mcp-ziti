@@ -44,7 +44,7 @@ func (t *databaseTools) snapshot(ctx context.Context, _ *mcp.CallToolRequest, _ 
 	if err != nil {
 		return nil, nil, fmt.Errorf("create database snapshot: %w", err)
 	}
-	return nil, map[string]string{"status": "snapshot created"}, nil
+	return jsonResult(map[string]string{"status": "snapshot created"})
 }
 
 func (t *databaseTools) checkIntegrity(ctx context.Context, _ *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, any, error) {
@@ -58,7 +58,7 @@ func (t *databaseTools) checkIntegrity(ctx context.Context, _ *mcp.CallToolReque
 	if err != nil {
 		return nil, nil, fmt.Errorf("check data integrity: %w", err)
 	}
-	return nil, resp.GetPayload(), nil
+	return jsonResult(resp.GetPayload())
 }
 
 func (t *databaseTools) fixIntegrity(ctx context.Context, _ *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, any, error) {
@@ -72,5 +72,5 @@ func (t *databaseTools) fixIntegrity(ctx context.Context, _ *mcp.CallToolRequest
 	if err != nil {
 		return nil, nil, fmt.Errorf("fix data integrity: %w", err)
 	}
-	return nil, resp.GetPayload(), nil
+	return jsonResult(resp.GetPayload())
 }

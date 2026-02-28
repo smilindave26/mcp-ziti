@@ -2,7 +2,10 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	mgmtER "github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	mgmtERP "github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
 	mgmtIdentity "github.com/openziti/edge-api/rest_management_api_client/identity"
@@ -14,6 +17,20 @@ const (
 	defaultLimit int64 = 100
 	maxLimit     int64 = 500
 )
+
+// jsonResult marshals v to JSON and returns it as a text content tool result.
+// The Out value is nil so the go-sdk does not set StructuredContent (which must
+// be a JSON object per the MCP spec; returning arrays or scalars there breaks
+// clients that validate the response).
+func jsonResult(v any) (*mcp.CallToolResult, any, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshal result: %w", err)
+	}
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: string(b)}},
+	}, nil, nil
+}
 
 // clampLimit returns the given limit clamped to [1, maxLimit].
 // If limit is 0 (unset), it returns defaultLimit.

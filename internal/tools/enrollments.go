@@ -65,7 +65,7 @@ func (t *enrollmentTools) list(ctx context.Context, _ *mcp.CallToolRequest, in l
 	if err != nil {
 		return nil, nil, fmt.Errorf("list enrollments: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getEnrollmentInput struct {
@@ -87,7 +87,7 @@ func (t *enrollmentTools) get(ctx context.Context, _ *mcp.CallToolRequest, in ge
 	if err != nil {
 		return nil, nil, fmt.Errorf("get enrollment %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type createEnrollmentInput struct {
@@ -138,7 +138,7 @@ func (t *enrollmentTools) create(ctx context.Context, _ *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, nil, fmt.Errorf("create enrollment: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type deleteEnrollmentInput struct {
@@ -160,5 +160,5 @@ func (t *enrollmentTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete enrollment %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

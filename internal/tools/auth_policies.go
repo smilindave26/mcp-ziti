@@ -68,7 +68,7 @@ func (t *authPolicyTools) list(ctx context.Context, _ *mcp.CallToolRequest, in l
 	if err != nil {
 		return nil, nil, fmt.Errorf("list auth policies: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getAuthPolicyInput struct {
@@ -90,7 +90,7 @@ func (t *authPolicyTools) get(ctx context.Context, _ *mcp.CallToolRequest, in ge
 	if err != nil {
 		return nil, nil, fmt.Errorf("get auth policy %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 // authPolicyPrimaryInput captures primary auth method settings.
@@ -167,7 +167,7 @@ func (t *authPolicyTools) create(ctx context.Context, _ *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, nil, fmt.Errorf("create auth policy: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type updateAuthPolicyInput struct {
@@ -201,7 +201,7 @@ func (t *authPolicyTools) update(ctx context.Context, _ *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, nil, fmt.Errorf("update auth policy %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "updated", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
 }
 
 type deleteAuthPolicyInput struct {
@@ -223,5 +223,5 @@ func (t *authPolicyTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete auth policy %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

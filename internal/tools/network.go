@@ -38,7 +38,7 @@ func (t *networkTools) version(ctx context.Context, _ *mcp.CallToolRequest, _ st
 	if err != nil {
 		return nil, nil, fmt.Errorf("get controller version: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type summaryResult struct {
@@ -106,5 +106,5 @@ func (t *networkTools) summary(ctx context.Context, _ *mcp.CallToolRequest, _ st
 		result.EdgeRouters = *erResp.GetPayload().Meta.Pagination.TotalCount
 	}
 
-	return nil, result, nil
+	return jsonResult(result)
 }

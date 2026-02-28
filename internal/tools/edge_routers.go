@@ -52,7 +52,7 @@ func (t *edgeRouterTools) list(ctx context.Context, _ *mcp.CallToolRequest, in l
 	if err != nil {
 		return nil, nil, fmt.Errorf("list edge routers: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getEdgeRouterInput struct {
@@ -74,5 +74,5 @@ func (t *edgeRouterTools) get(ctx context.Context, _ *mcp.CallToolRequest, in ge
 	if err != nil {
 		return nil, nil, fmt.Errorf("get edge router %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }

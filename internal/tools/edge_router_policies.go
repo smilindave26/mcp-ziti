@@ -65,7 +65,7 @@ func (t *edgeRouterPolicyTools) list(ctx context.Context, _ *mcp.CallToolRequest
 	if err != nil {
 		return nil, nil, fmt.Errorf("list edge router policies: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getEdgeRouterPolicyInput struct {
@@ -87,7 +87,7 @@ func (t *edgeRouterPolicyTools) get(ctx context.Context, _ *mcp.CallToolRequest,
 	if err != nil {
 		return nil, nil, fmt.Errorf("get edge router policy %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type createEdgeRouterPolicyInput struct {
@@ -123,7 +123,7 @@ func (t *edgeRouterPolicyTools) create(ctx context.Context, _ *mcp.CallToolReque
 	if err != nil {
 		return nil, nil, fmt.Errorf("create edge router policy: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type deleteEdgeRouterPolicyInput struct {
@@ -145,5 +145,5 @@ func (t *edgeRouterPolicyTools) delete(ctx context.Context, _ *mcp.CallToolReque
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete edge router policy %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

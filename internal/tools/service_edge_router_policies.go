@@ -68,7 +68,7 @@ func (t *serviceEdgeRouterPolicyTools) list(ctx context.Context, _ *mcp.CallTool
 	if err != nil {
 		return nil, nil, fmt.Errorf("list service edge router policies: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getSERPInput struct {
@@ -90,7 +90,7 @@ func (t *serviceEdgeRouterPolicyTools) get(ctx context.Context, _ *mcp.CallToolR
 	if err != nil {
 		return nil, nil, fmt.Errorf("get service edge router policy %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type createSERPInput struct {
@@ -126,7 +126,7 @@ func (t *serviceEdgeRouterPolicyTools) create(ctx context.Context, _ *mcp.CallTo
 	if err != nil {
 		return nil, nil, fmt.Errorf("create service edge router policy: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type updateSERPInput struct {
@@ -166,7 +166,7 @@ func (t *serviceEdgeRouterPolicyTools) update(ctx context.Context, _ *mcp.CallTo
 	if err != nil {
 		return nil, nil, fmt.Errorf("update service edge router policy %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "updated", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
 }
 
 type deleteSERPInput struct {
@@ -188,5 +188,5 @@ func (t *serviceEdgeRouterPolicyTools) delete(ctx context.Context, _ *mcp.CallTo
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete service edge router policy %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

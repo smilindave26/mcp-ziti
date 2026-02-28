@@ -63,7 +63,7 @@ func (t *authenticatorTools) list(ctx context.Context, _ *mcp.CallToolRequest, i
 	if err != nil {
 		return nil, nil, fmt.Errorf("list authenticators: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getAuthenticatorInput struct {
@@ -85,7 +85,7 @@ func (t *authenticatorTools) get(ctx context.Context, _ *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, nil, fmt.Errorf("get authenticator %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type updateAuthenticatorInput struct {
@@ -122,7 +122,7 @@ func (t *authenticatorTools) update(ctx context.Context, _ *mcp.CallToolRequest,
 	if err != nil {
 		return nil, nil, fmt.Errorf("update authenticator %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "updated", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
 }
 
 type deleteAuthenticatorInput struct {
@@ -144,5 +144,5 @@ func (t *authenticatorTools) delete(ctx context.Context, _ *mcp.CallToolRequest,
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete authenticator %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

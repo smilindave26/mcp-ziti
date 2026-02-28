@@ -70,7 +70,7 @@ func (t *serviceTools) list(ctx context.Context, _ *mcp.CallToolRequest, in list
 	if err != nil {
 		return nil, nil, fmt.Errorf("list services: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getServiceInput struct {
@@ -92,7 +92,7 @@ func (t *serviceTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getSe
 	if err != nil {
 		return nil, nil, fmt.Errorf("get service %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type createServiceInput struct {
@@ -122,7 +122,7 @@ func (t *serviceTools) create(ctx context.Context, _ *mcp.CallToolRequest, in cr
 	if err != nil {
 		return nil, nil, fmt.Errorf("create service: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type updateServiceInput struct {
@@ -156,7 +156,7 @@ func (t *serviceTools) update(ctx context.Context, _ *mcp.CallToolRequest, in up
 	if err != nil {
 		return nil, nil, fmt.Errorf("update service %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "updated", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
 }
 
 type deleteServiceInput struct {
@@ -178,5 +178,5 @@ func (t *serviceTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in de
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete service %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

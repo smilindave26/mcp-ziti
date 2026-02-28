@@ -44,5 +44,5 @@ func (t *controllerTools) list(ctx context.Context, _ *mcp.CallToolRequest, in l
 	if err != nil {
 		return nil, nil, fmt.Errorf("list controllers: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }

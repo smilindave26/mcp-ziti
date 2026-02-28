@@ -70,7 +70,7 @@ func (t *identityTools) list(ctx context.Context, _ *mcp.CallToolRequest, in lis
 	if err != nil {
 		return nil, nil, fmt.Errorf("list identities: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getIdentityInput struct {
@@ -92,7 +92,7 @@ func (t *identityTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getI
 	if err != nil {
 		return nil, nil, fmt.Errorf("get identity %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type createIdentityInput struct {
@@ -131,7 +131,7 @@ func (t *identityTools) create(ctx context.Context, _ *mcp.CallToolRequest, in c
 	if err != nil {
 		return nil, nil, fmt.Errorf("create identity: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type updateIdentityInput struct {
@@ -174,7 +174,7 @@ func (t *identityTools) update(ctx context.Context, _ *mcp.CallToolRequest, in u
 	if err != nil {
 		return nil, nil, fmt.Errorf("update identity %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "updated", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
 }
 
 type deleteIdentityInput struct {
@@ -196,5 +196,5 @@ func (t *identityTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in d
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete identity %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

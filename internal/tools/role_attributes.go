@@ -62,7 +62,7 @@ func (t *roleAttributeTools) listIdentity(ctx context.Context, _ *mcp.CallToolRe
 	if err != nil {
 		return nil, nil, fmt.Errorf("list identity role attributes: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 func (t *roleAttributeTools) listEdgeRouter(ctx context.Context, _ *mcp.CallToolRequest, in listRoleAttributesInput) (*mcp.CallToolResult, any, error) {
@@ -82,7 +82,7 @@ func (t *roleAttributeTools) listEdgeRouter(ctx context.Context, _ *mcp.CallTool
 	if err != nil {
 		return nil, nil, fmt.Errorf("list edge router role attributes: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 func (t *roleAttributeTools) listService(ctx context.Context, _ *mcp.CallToolRequest, in listRoleAttributesInput) (*mcp.CallToolResult, any, error) {
@@ -102,7 +102,7 @@ func (t *roleAttributeTools) listService(ctx context.Context, _ *mcp.CallToolReq
 	if err != nil {
 		return nil, nil, fmt.Errorf("list service role attributes: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 func (t *roleAttributeTools) listPostureCheck(ctx context.Context, _ *mcp.CallToolRequest, in listRoleAttributesInput) (*mcp.CallToolResult, any, error) {
@@ -122,5 +122,5 @@ func (t *roleAttributeTools) listPostureCheck(ctx context.Context, _ *mcp.CallTo
 	if err != nil {
 		return nil, nil, fmt.Errorf("list posture check role attributes: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }

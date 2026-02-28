@@ -93,7 +93,7 @@ func (t *configTools) listTypes(ctx context.Context, _ *mcp.CallToolRequest, in 
 	if err != nil {
 		return nil, nil, fmt.Errorf("list config types: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getConfigTypeInput struct {
@@ -115,7 +115,7 @@ func (t *configTools) getType(ctx context.Context, _ *mcp.CallToolRequest, in ge
 	if err != nil {
 		return nil, nil, fmt.Errorf("get config type %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type createConfigTypeInput struct {
@@ -143,7 +143,7 @@ func (t *configTools) createType(ctx context.Context, _ *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, nil, fmt.Errorf("create config type: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type deleteConfigTypeInput struct {
@@ -165,7 +165,7 @@ func (t *configTools) deleteType(ctx context.Context, _ *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete config type %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }
 
 // --- Configs ---
@@ -193,7 +193,7 @@ func (t *configTools) list(ctx context.Context, _ *mcp.CallToolRequest, in listC
 	if err != nil {
 		return nil, nil, fmt.Errorf("list configs: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getConfigInput struct {
@@ -215,7 +215,7 @@ func (t *configTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getCon
 	if err != nil {
 		return nil, nil, fmt.Errorf("get config %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type createConfigInput struct {
@@ -251,7 +251,7 @@ func (t *configTools) create(ctx context.Context, _ *mcp.CallToolRequest, in cre
 	if err != nil {
 		return nil, nil, fmt.Errorf("create config: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type updateConfigInput struct {
@@ -286,7 +286,7 @@ func (t *configTools) update(ctx context.Context, _ *mcp.CallToolRequest, in upd
 	if err != nil {
 		return nil, nil, fmt.Errorf("update config %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "updated", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
 }
 
 type deleteConfigInput struct {
@@ -308,5 +308,5 @@ func (t *configTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in del
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete config %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

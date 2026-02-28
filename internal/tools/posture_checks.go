@@ -63,7 +63,7 @@ func (t *postureCheckTools) list(ctx context.Context, _ *mcp.CallToolRequest, in
 	if err != nil {
 		return nil, nil, fmt.Errorf("list posture checks: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getPostureCheckInput struct {
@@ -85,7 +85,7 @@ func (t *postureCheckTools) get(ctx context.Context, _ *mcp.CallToolRequest, in 
 	if err != nil {
 		return nil, nil, fmt.Errorf("get posture check %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type listPostureCheckTypesInput struct {
@@ -106,7 +106,7 @@ func (t *postureCheckTools) listTypes(ctx context.Context, _ *mcp.CallToolReques
 	if err != nil {
 		return nil, nil, fmt.Errorf("list posture check types: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type deletePostureCheckInput struct {
@@ -128,5 +128,5 @@ func (t *postureCheckTools) delete(ctx context.Context, _ *mcp.CallToolRequest, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete posture check %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

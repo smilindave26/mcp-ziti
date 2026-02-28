@@ -68,7 +68,7 @@ func (t *certificateAuthorityTools) list(ctx context.Context, _ *mcp.CallToolReq
 	if err != nil {
 		return nil, nil, fmt.Errorf("list certificate authorities: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getCAInput struct {
@@ -90,7 +90,7 @@ func (t *certificateAuthorityTools) get(ctx context.Context, _ *mcp.CallToolRequ
 	if err != nil {
 		return nil, nil, fmt.Errorf("get certificate authority %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type createCAInput struct {
@@ -131,7 +131,7 @@ func (t *certificateAuthorityTools) create(ctx context.Context, _ *mcp.CallToolR
 	if err != nil {
 		return nil, nil, fmt.Errorf("create certificate authority: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type updateCAInput struct {
@@ -171,7 +171,7 @@ func (t *certificateAuthorityTools) update(ctx context.Context, _ *mcp.CallToolR
 	if err != nil {
 		return nil, nil, fmt.Errorf("update certificate authority %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "updated", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
 }
 
 type deleteCAInput struct {
@@ -193,5 +193,5 @@ func (t *certificateAuthorityTools) delete(ctx context.Context, _ *mcp.CallToolR
 	if err != nil {
 		return nil, nil, fmt.Errorf("delete certificate authority %q: %w", in.ID, err)
 	}
-	return nil, map[string]string{"status": "deleted", "id": in.ID}, nil
+	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

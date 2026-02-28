@@ -50,7 +50,7 @@ func (t *routerTools) list(ctx context.Context, _ *mcp.CallToolRequest, in listR
 	if err != nil {
 		return nil, nil, fmt.Errorf("list routers: %w", err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
 
 type getRouterInput struct {
@@ -72,5 +72,5 @@ func (t *routerTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getRou
 	if err != nil {
 		return nil, nil, fmt.Errorf("get router %q: %w", in.ID, err)
 	}
-	return nil, resp.GetPayload().Data, nil
+	return jsonResult(resp.GetPayload().Data)
 }
