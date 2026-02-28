@@ -1,8 +1,10 @@
 package ziticlient
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -10,6 +12,7 @@ import (
 	"github.com/netfoundry/mcp-ziti-golang/internal/auth"
 	"github.com/netfoundry/mcp-ziti-golang/internal/config"
 	"github.com/openziti/edge-api/rest_management_api_client"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 )
 
@@ -24,6 +27,30 @@ type Client struct {
 	expiresAt     time.Time
 	mu            sync.Mutex
 }
+
+// NewForTest returns a Client whose Mgmt() always returns an error.
+// Use this in tests that exercise the MCP protocol layer without a real controller:
+// tools will be registered correctly and their schemas exposed, but any tool call
+// will fail with a clear error wrapped in CallToolResult.IsError rather than panicking.
+func NewForTest() *Client {
+	u, _ := url.Parse("https://stub.local:1280")
+	return &Client{
+		authenticator: &stubAuth{},
+		ctrlURL:       u,
+		// zero expiresAt → Mgmt() always tries to re-authenticate, which fails
+	}
+}
+
+// stubAuth is an Authenticator that always returns an error, used by NewForTest.
+type stubAuth struct{}
+
+func (*stubAuth) Authenticate(*url.URL) (*rest_model.CurrentAPISessionDetail, error) {
+	return nil, errors.New("stub client: no Ziti controller configured")
+}
+func (*stubAuth) BuildHttpClient() (*http.Client, error) {
+	return nil, errors.New("stub client: no Ziti controller configured")
+}
+func (*stubAuth) SetInfo(*rest_model.EnvInfo, *rest_model.SdkInfo) {}
 
 // New creates a Client by authenticating with the controller using the provided config.
 func New(cfg *config.Config) (*Client, error) {
