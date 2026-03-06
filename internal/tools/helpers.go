@@ -18,15 +18,57 @@ const (
 	maxLimit     int64 = 500
 )
 
-// jsonResult marshals v to JSON and returns it as a text content tool result.
-// The Out value is nil so the go-sdk does not set StructuredContent (which must
-// be a JSON object per the MCP spec; returning arrays or scalars there breaks
-// clients that validate the response).
+// stripFields lists top-level and nested keys removed from every API response
+// to reduce token usage. These fields add no value for LLM-driven management.
+var stripFields = map[string]bool{
+	"_links":  true, // HAL hypermedia URLs
+	"envInfo": true, // OS/arch on identities
+	"sdkInfo": true, // SDK version/build info on identities
+}
+
+// stripDenylistKeys recursively removes denylist keys from maps and slices.
+func stripDenylistKeys(v any) any {
+	switch val := v.(type) {
+	case map[string]any:
+		for k := range val {
+			if stripFields[k] {
+				delete(val, k)
+			} else {
+				val[k] = stripDenylistKeys(val[k])
+			}
+		}
+		return val
+	case []any:
+		for i, item := range val {
+			val[i] = stripDenylistKeys(item)
+		}
+		return val
+	default:
+		return v
+	}
+}
+
+// jsonResult marshals v to JSON, strips noisy API fields, and returns it as a
+// text content tool result. The Out value is nil so the go-sdk does not set
+// StructuredContent (which must be a JSON object per the MCP spec; returning
+// arrays or scalars there breaks clients that validate the response).
 func jsonResult(v any) (*mcp.CallToolResult, any, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal result: %w", err)
 	}
+
+	var raw any
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return nil, nil, fmt.Errorf("unmarshal for stripping: %w", err)
+	}
+	raw = stripDenylistKeys(raw)
+
+	b, err = json.Marshal(raw)
+	if err != nil {
+		return nil, nil, fmt.Errorf("re-marshal result: %w", err)
+	}
+
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{&mcp.TextContent{Text: string(b)}},
 	}, nil, nil
