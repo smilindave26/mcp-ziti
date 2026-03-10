@@ -17,14 +17,29 @@ func registerExternalJWTSignerTools(s *mcp.Server, zc *ziticlient.Client) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list-external-jwt-signers",
 		Description: "List external JWT signers. Returns up to `limit` results (default 100, max 500). Use `offset` to paginate.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.list)
+		Annotations: readOnlyAnnotation,
+	}, makeListHandler(zc, "external JWT signers", func(ctx context.Context, mgmt *mgmtAPI, filter *string, limit, offset *int64) (any, error) {
+		params := mgmtEJS.NewListExternalJWTSignersParams().WithContext(ctx).WithLimit(limit).WithOffset(offset)
+		params.Filter = filter
+		resp, err := mgmt.ExternalJWTSigner.ListExternalJWTSigners(params, nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get-external-jwt-signer",
 		Description: "Get a single external JWT signer by ID.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.get)
+		Annotations: readOnlyAnnotation,
+	}, makeGetHandler(zc, "external JWT signer", func(ctx context.Context, mgmt *mgmtAPI, id string) (any, error) {
+		resp, err := mgmt.ExternalJWTSigner.DetailExternalJWTSigner(
+			mgmtEJS.NewDetailExternalJWTSignerParams().WithContext(ctx).WithID(id), nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "create-external-jwt-signer",
@@ -36,88 +51,34 @@ func registerExternalJWTSignerTools(s *mcp.Server, zc *ziticlient.Client) {
 		Description: "Update an external JWT signer.",
 	}, t.update)
 
-	destructive := true
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "delete-external-jwt-signer",
 		Description: "Permanently delete an external JWT signer by ID.",
-		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive, IdempotentHint: true},
-	}, t.delete)
+		Annotations: destructiveAnnotation,
+	}, makeDeleteHandler(zc, "external JWT signer", func(ctx context.Context, mgmt *mgmtAPI, id string) error {
+		_, err := mgmt.ExternalJWTSigner.DeleteExternalJWTSigner(
+			mgmtEJS.NewDeleteExternalJWTSignerParams().WithContext(ctx).WithID(id), nil)
+		return err
+	}))
 }
 
 type externalJWTSignerTools struct{ zc *ziticlient.Client }
 
-type listEJSInput struct {
-	Filter string `json:"filter,omitempty" jsonschema:"optional filter expression"`
-	Limit  int64  `json:"limit,omitempty"  jsonschema:"max results to return (default 100, max 500)"`
-	Offset int64  `json:"offset,omitempty" jsonschema:"number of results to skip for pagination"`
-}
-
-func (t *externalJWTSignerTools) list(ctx context.Context, _ *mcp.CallToolRequest, in listEJSInput) (*mcp.CallToolResult, any, error) {
-	limit, offset := clampLimit(in.Limit), in.Offset
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtEJS.NewListExternalJWTSignersParams().WithContext(ctx).WithLimit(&limit).WithOffset(&offset)
-	if in.Filter != "" {
-		params.Filter = &in.Filter
-	}
-
-	resp, err := mgmt.ExternalJWTSigner.ListExternalJWTSigners(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("list external JWT signers: %w", err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
-
-type getEJSInput struct {
-	ID string `json:"id" jsonschema:"required,external JWT signer ID"`
-}
-
-func (t *externalJWTSignerTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getEJSInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtEJS.NewDetailExternalJWTSignerParams().WithContext(ctx).WithID(in.ID)
-	resp, err := mgmt.ExternalJWTSigner.DetailExternalJWTSigner(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get external JWT signer %q: %w", in.ID, err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
-
 type createEJSInput struct {
-	Name          string `json:"name"                    jsonschema:"required,signer name"`
-	Issuer        string `json:"issuer"                  jsonschema:"required,expected JWT issuer claim"`
-	Audience      string `json:"audience"                jsonschema:"required,expected JWT audience claim"`
-	Enabled       bool   `json:"enabled"                 jsonschema:"whether the signer is active"`
-	CertPem       string `json:"certPem,omitempty"       jsonschema:"PEM-encoded signing certificate (mutually exclusive with jwksEndpoint)"`
-	JwksEndpoint  string `json:"jwksEndpoint,omitempty"  jsonschema:"JWKS endpoint URL (mutually exclusive with certPem)"`
-	Kid           string `json:"kid,omitempty"           jsonschema:"key ID hint"`
+	Name           string `json:"name"                    jsonschema:"required,signer name"`
+	Issuer         string `json:"issuer"                  jsonschema:"required,expected JWT issuer claim"`
+	Audience       string `json:"audience"                jsonschema:"required,expected JWT audience claim"`
+	Enabled        bool   `json:"enabled"                 jsonschema:"whether the signer is active"`
+	CertPem        string `json:"certPem,omitempty"       jsonschema:"PEM-encoded signing certificate (mutually exclusive with jwksEndpoint)"`
+	JwksEndpoint   string `json:"jwksEndpoint,omitempty"  jsonschema:"JWKS endpoint URL (mutually exclusive with certPem)"`
+	Kid            string `json:"kid,omitempty"           jsonschema:"key ID hint"`
 	ClaimsProperty string `json:"claimsProperty,omitempty" jsonschema:"JWT claim to use as the identity lookup property"`
-	UseExternalID bool   `json:"useExternalId,omitempty" jsonschema:"use externalId field for identity lookup"`
-	ClientID      string `json:"clientId,omitempty"      jsonschema:"OAuth client ID for external auth URL flow"`
+	UseExternalID  bool   `json:"useExternalId,omitempty" jsonschema:"use externalId field for identity lookup"`
+	ClientID       string `json:"clientId,omitempty"      jsonschema:"OAuth client ID for external auth URL flow"`
 	ExternalAuthURL string `json:"externalAuthUrl,omitempty" jsonschema:"URL for external authentication"`
 }
 
 func (t *externalJWTSignerTools) create(ctx context.Context, _ *mcp.CallToolRequest, in createEJSInput) (*mcp.CallToolResult, any, error) {
-	if in.Name == "" {
-		return nil, nil, fmt.Errorf("name is required")
-	}
-	if in.Issuer == "" {
-		return nil, nil, fmt.Errorf("issuer is required")
-	}
-	if in.Audience == "" {
-		return nil, nil, fmt.Errorf("audience is required")
-	}
 	if in.CertPem == "" && in.JwksEndpoint == "" {
 		return nil, nil, fmt.Errorf("one of certPem or jwksEndpoint is required")
 	}
@@ -165,34 +126,21 @@ func (t *externalJWTSignerTools) create(ctx context.Context, _ *mcp.CallToolRequ
 }
 
 type updateEJSInput struct {
-	ID            string `json:"id"                      jsonschema:"required,external JWT signer ID to update"`
-	Name          string `json:"name"                    jsonschema:"required,signer name"`
-	Issuer        string `json:"issuer"                  jsonschema:"required,expected JWT issuer claim"`
-	Audience      string `json:"audience"                jsonschema:"required,expected JWT audience claim"`
-	Enabled       bool   `json:"enabled"                 jsonschema:"whether the signer is active"`
-	CertPem       string `json:"certPem,omitempty"       jsonschema:"PEM-encoded signing certificate"`
-	JwksEndpoint  string `json:"jwksEndpoint,omitempty"  jsonschema:"JWKS endpoint URL"`
-	Kid           string `json:"kid,omitempty"           jsonschema:"key ID hint"`
-	ClaimsProperty string `json:"claimsProperty,omitempty" jsonschema:"JWT claim used for identity lookup"`
-	UseExternalID bool   `json:"useExternalId,omitempty" jsonschema:"use externalId field for identity lookup"`
-	ClientID      string `json:"clientId,omitempty"      jsonschema:"OAuth client ID"`
+	ID              string `json:"id"                      jsonschema:"required,external JWT signer ID to update"`
+	Name            string `json:"name"                    jsonschema:"required,signer name"`
+	Issuer          string `json:"issuer"                  jsonschema:"required,expected JWT issuer claim"`
+	Audience        string `json:"audience"                jsonschema:"required,expected JWT audience claim"`
+	Enabled         bool   `json:"enabled"                 jsonschema:"whether the signer is active"`
+	CertPem         string `json:"certPem,omitempty"       jsonschema:"PEM-encoded signing certificate"`
+	JwksEndpoint    string `json:"jwksEndpoint,omitempty"  jsonschema:"JWKS endpoint URL"`
+	Kid             string `json:"kid,omitempty"           jsonschema:"key ID hint"`
+	ClaimsProperty  string `json:"claimsProperty,omitempty" jsonschema:"JWT claim used for identity lookup"`
+	UseExternalID   bool   `json:"useExternalId,omitempty" jsonschema:"use externalId field for identity lookup"`
+	ClientID        string `json:"clientId,omitempty"      jsonschema:"OAuth client ID"`
 	ExternalAuthURL string `json:"externalAuthUrl,omitempty" jsonschema:"URL for external authentication"`
 }
 
 func (t *externalJWTSignerTools) update(ctx context.Context, _ *mcp.CallToolRequest, in updateEJSInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-	if in.Name == "" {
-		return nil, nil, fmt.Errorf("name is required")
-	}
-	if in.Issuer == "" {
-		return nil, nil, fmt.Errorf("issuer is required")
-	}
-	if in.Audience == "" {
-		return nil, nil, fmt.Errorf("audience is required")
-	}
-
 	body := &rest_model.ExternalJWTSignerUpdate{
 		Name:     &in.Name,
 		Issuer:   &in.Issuer,
@@ -233,26 +181,4 @@ func (t *externalJWTSignerTools) update(ctx context.Context, _ *mcp.CallToolRequ
 		return nil, nil, fmt.Errorf("update external JWT signer %q: %w", in.ID, err)
 	}
 	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
-}
-
-type deleteEJSInput struct {
-	ID string `json:"id" jsonschema:"required,external JWT signer ID to delete"`
-}
-
-func (t *externalJWTSignerTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in deleteEJSInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtEJS.NewDeleteExternalJWTSignerParams().WithContext(ctx).WithID(in.ID)
-	_, err = mgmt.ExternalJWTSigner.DeleteExternalJWTSigner(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("delete external JWT signer %q: %w", in.ID, err)
-	}
-	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

@@ -12,19 +12,33 @@ import (
 
 func registerServicePolicyTools(s *mcp.Server, zc *ziticlient.Client) {
 	t := &servicePolicyTools{zc: zc}
-	destructive := true
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list-service-policies",
 		Description: "List service policies. Returns up to `limit` results (default 100, max 500). Use `offset` to paginate.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.list)
+		Annotations: readOnlyAnnotation,
+	}, makeListHandler(zc, "service policies", func(ctx context.Context, mgmt *mgmtAPI, filter *string, limit, offset *int64) (any, error) {
+		params := mgmtServicePolicy.NewListServicePoliciesParams().WithContext(ctx).WithLimit(limit).WithOffset(offset)
+		params.Filter = filter
+		resp, err := mgmt.ServicePolicy.ListServicePolicies(params, nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get-service-policy",
 		Description: "Get a single service policy by ID.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.get)
+		Annotations: readOnlyAnnotation,
+	}, makeGetHandler(zc, "service policy", func(ctx context.Context, mgmt *mgmtAPI, id string) (any, error) {
+		resp, err := mgmt.ServicePolicy.DetailServicePolicy(
+			mgmtServicePolicy.NewDetailServicePolicyParams().WithContext(ctx).WithID(id), nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "create-service-policy",
@@ -39,61 +53,15 @@ func registerServicePolicyTools(s *mcp.Server, zc *ziticlient.Client) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "delete-service-policy",
 		Description: "Permanently delete a service policy by ID.",
-		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive, IdempotentHint: true},
-	}, t.delete)
+		Annotations: destructiveAnnotation,
+	}, makeDeleteHandler(zc, "service policy", func(ctx context.Context, mgmt *mgmtAPI, id string) error {
+		_, err := mgmt.ServicePolicy.DeleteServicePolicy(
+			mgmtServicePolicy.NewDeleteServicePolicyParams().WithContext(ctx).WithID(id), nil)
+		return err
+	}))
 }
 
 type servicePolicyTools struct{ zc *ziticlient.Client }
-
-type listServicePoliciesInput struct {
-	Filter string `json:"filter,omitempty" jsonschema:"optional filter expression"`
-	Limit  int64  `json:"limit,omitempty"  jsonschema:"max results to return (default 100, max 500)"`
-	Offset int64  `json:"offset,omitempty" jsonschema:"number of results to skip for pagination"`
-}
-
-func (t *servicePolicyTools) list(ctx context.Context, _ *mcp.CallToolRequest, in listServicePoliciesInput) (*mcp.CallToolResult, any, error) {
-	limit, offset := clampLimit(in.Limit), in.Offset
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtServicePolicy.NewListServicePoliciesParams().WithContext(ctx)
-	params.Limit = &limit
-	params.Offset = &offset
-	if in.Filter != "" {
-		params.Filter = &in.Filter
-	}
-
-	resp, err := mgmt.ServicePolicy.ListServicePolicies(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("list service policies: %w", err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
-
-type getServicePolicyInput struct {
-	ID string `json:"id" jsonschema:"required,service policy ID"`
-}
-
-func (t *servicePolicyTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getServicePolicyInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtServicePolicy.NewDetailServicePolicyParams().WithContext(ctx).WithID(in.ID)
-	resp, err := mgmt.ServicePolicy.DetailServicePolicy(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get service policy %q: %w", in.ID, err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
 
 type createServicePolicyInput struct {
 	Name          string   `json:"name"                      jsonschema:"required,policy name"`
@@ -104,16 +72,6 @@ type createServicePolicyInput struct {
 }
 
 func (t *servicePolicyTools) create(ctx context.Context, _ *mcp.CallToolRequest, in createServicePolicyInput) (*mcp.CallToolResult, any, error) {
-	if in.Name == "" {
-		return nil, nil, fmt.Errorf("name is required")
-	}
-	if in.Type == "" {
-		return nil, nil, fmt.Errorf("type is required (Dial or Bind)")
-	}
-	if in.Semantic == "" {
-		return nil, nil, fmt.Errorf("semantic is required (AllOf or AnyOf)")
-	}
-
 	dialBind := rest_model.DialBind(in.Type)
 	semantic := rest_model.Semantic(in.Semantic)
 	body := &rest_model.ServicePolicyCreate{
@@ -147,19 +105,6 @@ type updateServicePolicyInput struct {
 }
 
 func (t *servicePolicyTools) update(ctx context.Context, _ *mcp.CallToolRequest, in updateServicePolicyInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-	if in.Name == "" {
-		return nil, nil, fmt.Errorf("name is required")
-	}
-	if in.Type == "" {
-		return nil, nil, fmt.Errorf("type is required (Dial or Bind)")
-	}
-	if in.Semantic == "" {
-		return nil, nil, fmt.Errorf("semantic is required (AllOf or AnyOf)")
-	}
-
 	dialBind := rest_model.DialBind(in.Type)
 	semantic := rest_model.Semantic(in.Semantic)
 	body := &rest_model.ServicePolicyUpdate{
@@ -181,26 +126,4 @@ func (t *servicePolicyTools) update(ctx context.Context, _ *mcp.CallToolRequest,
 		return nil, nil, fmt.Errorf("update service policy %q: %w", in.ID, err)
 	}
 	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
-}
-
-type deleteServicePolicyInput struct {
-	ID string `json:"id" jsonschema:"required,service policy ID to delete"`
-}
-
-func (t *servicePolicyTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in deleteServicePolicyInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtServicePolicy.NewDeleteServicePolicyParams().WithContext(ctx).WithID(in.ID)
-	_, err = mgmt.ServicePolicy.DeleteServicePolicy(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("delete service policy %q: %w", in.ID, err)
-	}
-	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

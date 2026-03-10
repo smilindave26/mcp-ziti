@@ -16,14 +16,29 @@ func registerConfigTools(s *mcp.Server, zc *ziticlient.Client) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list-config-types",
 		Description: "List service config types (schemas for service configurations). Returns up to `limit` results (default 100, max 500).",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.listTypes)
+		Annotations: readOnlyAnnotation,
+	}, makeListHandler(zc, "config types", func(ctx context.Context, mgmt *mgmtAPI, filter *string, limit, offset *int64) (any, error) {
+		params := mgmtConfig.NewListConfigTypesParams().WithContext(ctx).WithLimit(limit).WithOffset(offset)
+		params.Filter = filter
+		resp, err := mgmt.Config.ListConfigTypes(params, nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get-config-type",
 		Description: "Get a single config type by ID.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.getType)
+		Annotations: readOnlyAnnotation,
+	}, makeGetHandler(zc, "config type", func(ctx context.Context, mgmt *mgmtAPI, id string) (any, error) {
+		resp, err := mgmt.Config.DetailConfigType(
+			mgmtConfig.NewDetailConfigTypeParams().WithContext(ctx).WithID(id), nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "create-config-type",
@@ -33,20 +48,39 @@ func registerConfigTools(s *mcp.Server, zc *ziticlient.Client) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "delete-config-type",
 		Description: "Permanently delete a config type by ID.",
-		Annotations: &mcp.ToolAnnotations{DestructiveHint: func() *bool { b := true; return &b }()},
-	}, t.deleteType)
+		Annotations: destructiveAnnotation,
+	}, makeDeleteHandler(zc, "config type", func(ctx context.Context, mgmt *mgmtAPI, id string) error {
+		_, err := mgmt.Config.DeleteConfigType(
+			mgmtConfig.NewDeleteConfigTypeParams().WithContext(ctx).WithID(id), nil)
+		return err
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list-configs",
 		Description: "List service configurations. Returns up to `limit` results (default 100, max 500). Use `offset` to paginate.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.list)
+		Annotations: readOnlyAnnotation,
+	}, makeListHandler(zc, "configs", func(ctx context.Context, mgmt *mgmtAPI, filter *string, limit, offset *int64) (any, error) {
+		params := mgmtConfig.NewListConfigsParams().WithContext(ctx).WithLimit(limit).WithOffset(offset)
+		params.Filter = filter
+		resp, err := mgmt.Config.ListConfigs(params, nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get-config",
 		Description: "Get a single service configuration by ID.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.get)
+		Annotations: readOnlyAnnotation,
+	}, makeGetHandler(zc, "config", func(ctx context.Context, mgmt *mgmtAPI, id string) (any, error) {
+		resp, err := mgmt.Config.DetailConfig(
+			mgmtConfig.NewDetailConfigParams().WithContext(ctx).WithID(id), nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "create-config",
@@ -58,65 +92,20 @@ func registerConfigTools(s *mcp.Server, zc *ziticlient.Client) {
 		Description: "Update an existing service configuration's name or data.",
 	}, t.update)
 
-	destructive := true
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "delete-config",
 		Description: "Permanently delete a service configuration by ID.",
-		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive, IdempotentHint: true},
-	}, t.delete)
+		Annotations: destructiveAnnotation,
+	}, makeDeleteHandler(zc, "config", func(ctx context.Context, mgmt *mgmtAPI, id string) error {
+		_, err := mgmt.Config.DeleteConfig(
+			mgmtConfig.NewDeleteConfigParams().WithContext(ctx).WithID(id), nil)
+		return err
+	}))
 }
 
 type configTools struct{ zc *ziticlient.Client }
 
 // --- Config Types ---
-
-type listConfigTypesInput struct {
-	Filter string `json:"filter,omitempty" jsonschema:"optional filter expression"`
-	Limit  int64  `json:"limit,omitempty"  jsonschema:"max results to return (default 100, max 500)"`
-	Offset int64  `json:"offset,omitempty" jsonschema:"number of results to skip for pagination"`
-}
-
-func (t *configTools) listTypes(ctx context.Context, _ *mcp.CallToolRequest, in listConfigTypesInput) (*mcp.CallToolResult, any, error) {
-	limit, offset := clampLimit(in.Limit), in.Offset
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtConfig.NewListConfigTypesParams().WithContext(ctx).WithLimit(&limit).WithOffset(&offset)
-	if in.Filter != "" {
-		params.Filter = &in.Filter
-	}
-
-	resp, err := mgmt.Config.ListConfigTypes(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("list config types: %w", err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
-
-type getConfigTypeInput struct {
-	ID string `json:"id" jsonschema:"required,config type ID"`
-}
-
-func (t *configTools) getType(ctx context.Context, _ *mcp.CallToolRequest, in getConfigTypeInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtConfig.NewDetailConfigTypeParams().WithContext(ctx).WithID(in.ID)
-	resp, err := mgmt.Config.DetailConfigType(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get config type %q: %w", in.ID, err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
 
 type createConfigTypeInput struct {
 	Name   string `json:"name"             jsonschema:"required,config type name"`
@@ -124,10 +113,6 @@ type createConfigTypeInput struct {
 }
 
 func (t *configTools) createType(ctx context.Context, _ *mcp.CallToolRequest, in createConfigTypeInput) (*mcp.CallToolResult, any, error) {
-	if in.Name == "" {
-		return nil, nil, fmt.Errorf("name is required")
-	}
-
 	body := &rest_model.ConfigTypeCreate{
 		Name:   &in.Name,
 		Schema: in.Schema,
@@ -146,77 +131,7 @@ func (t *configTools) createType(ctx context.Context, _ *mcp.CallToolRequest, in
 	return jsonResult(resp.GetPayload().Data)
 }
 
-type deleteConfigTypeInput struct {
-	ID string `json:"id" jsonschema:"required,config type ID to delete"`
-}
-
-func (t *configTools) deleteType(ctx context.Context, _ *mcp.CallToolRequest, in deleteConfigTypeInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtConfig.NewDeleteConfigTypeParams().WithContext(ctx).WithID(in.ID)
-	_, err = mgmt.Config.DeleteConfigType(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("delete config type %q: %w", in.ID, err)
-	}
-	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
-}
-
 // --- Configs ---
-
-type listConfigsInput struct {
-	Filter string `json:"filter,omitempty" jsonschema:"optional filter expression"`
-	Limit  int64  `json:"limit,omitempty"  jsonschema:"max results to return (default 100, max 500)"`
-	Offset int64  `json:"offset,omitempty" jsonschema:"number of results to skip for pagination"`
-}
-
-func (t *configTools) list(ctx context.Context, _ *mcp.CallToolRequest, in listConfigsInput) (*mcp.CallToolResult, any, error) {
-	limit, offset := clampLimit(in.Limit), in.Offset
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtConfig.NewListConfigsParams().WithContext(ctx).WithLimit(&limit).WithOffset(&offset)
-	if in.Filter != "" {
-		params.Filter = &in.Filter
-	}
-
-	resp, err := mgmt.Config.ListConfigs(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("list configs: %w", err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
-
-type getConfigInput struct {
-	ID string `json:"id" jsonschema:"required,config ID"`
-}
-
-func (t *configTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getConfigInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtConfig.NewDetailConfigParams().WithContext(ctx).WithID(in.ID)
-	resp, err := mgmt.Config.DetailConfig(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get config %q: %w", in.ID, err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
 
 type createConfigInput struct {
 	Name         string         `json:"name"         jsonschema:"required,config name"`
@@ -225,12 +140,6 @@ type createConfigInput struct {
 }
 
 func (t *configTools) create(ctx context.Context, _ *mcp.CallToolRequest, in createConfigInput) (*mcp.CallToolResult, any, error) {
-	if in.Name == "" {
-		return nil, nil, fmt.Errorf("name is required")
-	}
-	if in.ConfigTypeID == "" {
-		return nil, nil, fmt.Errorf("configTypeId is required")
-	}
 	if in.Data == nil {
 		return nil, nil, fmt.Errorf("data is required")
 	}
@@ -262,12 +171,6 @@ type updateConfigInput struct {
 }
 
 func (t *configTools) update(ctx context.Context, _ *mcp.CallToolRequest, in updateConfigInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-	if in.Name == "" {
-		return nil, nil, fmt.Errorf("name is required")
-	}
 	if in.Data == nil {
 		return nil, nil, fmt.Errorf("data is required")
 	}
@@ -289,26 +192,4 @@ func (t *configTools) update(ctx context.Context, _ *mcp.CallToolRequest, in upd
 		return nil, nil, fmt.Errorf("update config %q: %w", in.ID, err)
 	}
 	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
-}
-
-type deleteConfigInput struct {
-	ID string `json:"id" jsonschema:"required,config ID to delete"`
-}
-
-func (t *configTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in deleteConfigInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtConfig.NewDeleteConfigParams().WithContext(ctx).WithID(in.ID)
-	_, err = mgmt.Config.DeleteConfig(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("delete config %q: %w", in.ID, err)
-	}
-	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

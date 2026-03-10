@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/netfoundry/mcp-ziti-golang/internal/ziticlient"
+	mgmtClient "github.com/openziti/edge-api/rest_management_api_client"
 	mgmtER "github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	mgmtERP "github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
 	mgmtIdentity "github.com/openziti/edge-api/rest_management_api_client/identity"
@@ -17,6 +19,91 @@ const (
 	defaultLimit int64 = 100
 	maxLimit     int64 = 500
 )
+
+// mgmtAPI is a type alias so tool files can reference the management client
+// type without importing the package themselves.
+type mgmtAPI = mgmtClient.ZitiEdgeManagement
+
+// Shared input types for standard CRUD operations.
+
+type listInput struct {
+	Filter string `json:"filter,omitempty" jsonschema:"optional filter expression, e.g. name contains 'test'"`
+	Limit  int64  `json:"limit,omitempty"  jsonschema:"max results to return (default 100, max 500)"`
+	Offset int64  `json:"offset,omitempty" jsonschema:"number of results to skip for pagination"`
+}
+
+type getInput struct {
+	ID string `json:"id" jsonschema:"required,resource ID"`
+}
+
+type deleteInput struct {
+	ID string `json:"id" jsonschema:"required,resource ID to delete"`
+}
+
+// Common tool annotations.
+var (
+	readOnlyAnnotation    = &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true}
+	destructiveAnnotation = &mcp.ToolAnnotations{DestructiveHint: boolPtr(true), IdempotentHint: true}
+)
+
+func boolPtr(b bool) *bool { return &b }
+
+// CRUD handler function types.
+type (
+	listFunc   func(ctx context.Context, mgmt *mgmtAPI, filter *string, limit, offset *int64) (any, error)
+	getFunc    func(ctx context.Context, mgmt *mgmtAPI, id string) (any, error)
+	deleteFunc func(ctx context.Context, mgmt *mgmtAPI, id string) error
+)
+
+// makeListHandler creates a standard list tool handler.
+func makeListHandler(zc *ziticlient.Client, name string, fn listFunc) func(context.Context, *mcp.CallToolRequest, listInput) (*mcp.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcp.CallToolRequest, in listInput) (*mcp.CallToolResult, any, error) {
+		mgmt, err := zc.Mgmt()
+		if err != nil {
+			return nil, nil, err
+		}
+		limit := clampLimit(in.Limit)
+		offset := in.Offset
+		var filter *string
+		if in.Filter != "" {
+			filter = &in.Filter
+		}
+		data, err := fn(ctx, mgmt, filter, &limit, &offset)
+		if err != nil {
+			return nil, nil, fmt.Errorf("list %s: %w", name, err)
+		}
+		return jsonResult(data)
+	}
+}
+
+// makeGetHandler creates a standard get-by-ID tool handler.
+func makeGetHandler(zc *ziticlient.Client, name string, fn getFunc) func(context.Context, *mcp.CallToolRequest, getInput) (*mcp.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcp.CallToolRequest, in getInput) (*mcp.CallToolResult, any, error) {
+		mgmt, err := zc.Mgmt()
+		if err != nil {
+			return nil, nil, err
+		}
+		data, err := fn(ctx, mgmt, in.ID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("get %s %q: %w", name, in.ID, err)
+		}
+		return jsonResult(data)
+	}
+}
+
+// makeDeleteHandler creates a standard delete-by-ID tool handler.
+func makeDeleteHandler(zc *ziticlient.Client, name string, fn deleteFunc) func(context.Context, *mcp.CallToolRequest, deleteInput) (*mcp.CallToolResult, any, error) {
+	return func(ctx context.Context, _ *mcp.CallToolRequest, in deleteInput) (*mcp.CallToolResult, any, error) {
+		mgmt, err := zc.Mgmt()
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := fn(ctx, mgmt, in.ID); err != nil {
+			return nil, nil, fmt.Errorf("delete %s %q: %w", name, in.ID, err)
+		}
+		return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
+	}
+}
 
 // stripFields lists top-level and nested keys removed from every API response
 // to reduce token usage. These fields add no value for LLM-driven management.

@@ -16,77 +16,47 @@ func registerTerminatorTools(s *mcp.Server, zc *ziticlient.Client) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list-terminators",
 		Description: "List terminators (service endpoints hosted by SDK applications or routers). Returns up to `limit` results (default 100, max 500). Use `offset` to paginate.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.list)
+		Annotations: readOnlyAnnotation,
+	}, makeListHandler(zc, "terminators", func(ctx context.Context, mgmt *mgmtAPI, filter *string, limit, offset *int64) (any, error) {
+		params := mgmtTerm.NewListTerminatorsParams().WithContext(ctx).WithLimit(limit).WithOffset(offset)
+		params.Filter = filter
+		resp, err := mgmt.Terminator.ListTerminators(params, nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get-terminator",
 		Description: "Get a single terminator by ID.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.get)
+		Annotations: readOnlyAnnotation,
+	}, makeGetHandler(zc, "terminator", func(ctx context.Context, mgmt *mgmtAPI, id string) (any, error) {
+		resp, err := mgmt.Terminator.DetailTerminator(
+			mgmtTerm.NewDetailTerminatorParams().WithContext(ctx).WithID(id), nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "create-terminator",
 		Description: "Create a terminator linking a service to a router address. binding is typically 'transport'. precedence is one of: default, required, failed.",
 	}, t.create)
 
-	destructive := true
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "delete-terminator",
 		Description: "Permanently delete a terminator by ID.",
-		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive, IdempotentHint: true},
-	}, t.delete)
+		Annotations: destructiveAnnotation,
+	}, makeDeleteHandler(zc, "terminator", func(ctx context.Context, mgmt *mgmtAPI, id string) error {
+		_, err := mgmt.Terminator.DeleteTerminator(
+			mgmtTerm.NewDeleteTerminatorParams().WithContext(ctx).WithID(id), nil)
+		return err
+	}))
 }
 
 type terminatorTools struct{ zc *ziticlient.Client }
-
-type listTerminatorsInput struct {
-	Filter string `json:"filter,omitempty" jsonschema:"optional filter expression"`
-	Limit  int64  `json:"limit,omitempty"  jsonschema:"max results to return (default 100, max 500)"`
-	Offset int64  `json:"offset,omitempty" jsonschema:"number of results to skip for pagination"`
-}
-
-func (t *terminatorTools) list(ctx context.Context, _ *mcp.CallToolRequest, in listTerminatorsInput) (*mcp.CallToolResult, any, error) {
-	limit, offset := clampLimit(in.Limit), in.Offset
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtTerm.NewListTerminatorsParams().WithContext(ctx).WithLimit(&limit).WithOffset(&offset)
-	if in.Filter != "" {
-		params.Filter = &in.Filter
-	}
-
-	resp, err := mgmt.Terminator.ListTerminators(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("list terminators: %w", err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
-
-type getTerminatorInput struct {
-	ID string `json:"id" jsonschema:"required,terminator ID"`
-}
-
-func (t *terminatorTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getTerminatorInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtTerm.NewDetailTerminatorParams().WithContext(ctx).WithID(in.ID)
-	resp, err := mgmt.Terminator.DetailTerminator(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get terminator %q: %w", in.ID, err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
 
 type createTerminatorInput struct {
 	ServiceID  string `json:"serviceId"            jsonschema:"required,service ID this terminator hosts"`
@@ -98,19 +68,6 @@ type createTerminatorInput struct {
 }
 
 func (t *terminatorTools) create(ctx context.Context, _ *mcp.CallToolRequest, in createTerminatorInput) (*mcp.CallToolResult, any, error) {
-	if in.ServiceID == "" {
-		return nil, nil, fmt.Errorf("serviceId is required")
-	}
-	if in.RouterID == "" {
-		return nil, nil, fmt.Errorf("routerId is required")
-	}
-	if in.Binding == "" {
-		return nil, nil, fmt.Errorf("binding is required")
-	}
-	if in.Address == "" {
-		return nil, nil, fmt.Errorf("address is required")
-	}
-
 	body := &rest_model.TerminatorCreate{
 		Service: &in.ServiceID,
 		Router:  &in.RouterID,
@@ -137,26 +94,4 @@ func (t *terminatorTools) create(ctx context.Context, _ *mcp.CallToolRequest, in
 		return nil, nil, fmt.Errorf("create terminator: %w", err)
 	}
 	return jsonResult(resp.GetPayload().Data)
-}
-
-type deleteTerminatorInput struct {
-	ID string `json:"id" jsonschema:"required,terminator ID to delete"`
-}
-
-func (t *terminatorTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in deleteTerminatorInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtTerm.NewDeleteTerminatorParams().WithContext(ctx).WithID(in.ID)
-	_, err = mgmt.Terminator.DeleteTerminator(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("delete terminator %q: %w", in.ID, err)
-	}
-	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

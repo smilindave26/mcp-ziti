@@ -16,14 +16,29 @@ func registerIdentityTools(s *mcp.Server, zc *ziticlient.Client) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list-identities",
 		Description: "List identities in the Ziti network. Returns up to `limit` results (default 100, max 500). Use `offset` to paginate.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.list)
+		Annotations: readOnlyAnnotation,
+	}, makeListHandler(zc, "identities", func(ctx context.Context, mgmt *mgmtAPI, filter *string, limit, offset *int64) (any, error) {
+		params := mgmtIdentity.NewListIdentitiesParams().WithContext(ctx).WithLimit(limit).WithOffset(offset)
+		params.Filter = filter
+		resp, err := mgmt.Identity.ListIdentities(params, nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get-identity",
 		Description: "Get a single identity by ID.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.get)
+		Annotations: readOnlyAnnotation,
+	}, makeGetHandler(zc, "identity", func(ctx context.Context, mgmt *mgmtAPI, id string) (any, error) {
+		resp, err := mgmt.Identity.DetailIdentity(
+			mgmtIdentity.NewDetailIdentityParams().WithContext(ctx).WithID(id), nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "create-identity",
@@ -35,65 +50,18 @@ func registerIdentityTools(s *mcp.Server, zc *ziticlient.Client) {
 		Description: "Update an existing identity's name, admin flag, or role attributes. All provided fields replace existing values.",
 	}, t.update)
 
-	destructive := true
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "delete-identity",
 		Description: "Permanently delete an identity by ID.",
-		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive, IdempotentHint: true},
-	}, t.delete)
+		Annotations: destructiveAnnotation,
+	}, makeDeleteHandler(zc, "identity", func(ctx context.Context, mgmt *mgmtAPI, id string) error {
+		_, err := mgmt.Identity.DeleteIdentity(
+			mgmtIdentity.NewDeleteIdentityParams().WithContext(ctx).WithID(id), nil)
+		return err
+	}))
 }
 
 type identityTools struct{ zc *ziticlient.Client }
-
-type listIdentitiesInput struct {
-	Filter string `json:"filter,omitempty" jsonschema:"optional filter expression, e.g. name contains \"test\""`
-	Limit  int64  `json:"limit,omitempty"  jsonschema:"max results to return (default 100, max 500)"`
-	Offset int64  `json:"offset,omitempty" jsonschema:"number of results to skip for pagination"`
-}
-
-func (t *identityTools) list(ctx context.Context, _ *mcp.CallToolRequest, in listIdentitiesInput) (*mcp.CallToolResult, any, error) {
-	limit, offset := clampLimit(in.Limit), in.Offset
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtIdentity.NewListIdentitiesParams().WithContext(ctx)
-	params.Limit = &limit
-	params.Offset = &offset
-	if in.Filter != "" {
-		params.Filter = &in.Filter
-	}
-
-	resp, err := mgmt.Identity.ListIdentities(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("list identities: %w", err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
-
-type getIdentityInput struct {
-	ID string `json:"id" jsonschema:"required,identity ID"`
-}
-
-func (t *identityTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getIdentityInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtIdentity.NewDetailIdentityParams().WithContext(ctx).WithID(in.ID)
-	resp, err := mgmt.Identity.DetailIdentity(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get identity %q: %w", in.ID, err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
 
 type createIdentityInput struct {
 	Name           string   `json:"name"              jsonschema:"required,identity name"`
@@ -103,13 +71,6 @@ type createIdentityInput struct {
 }
 
 func (t *identityTools) create(ctx context.Context, _ *mcp.CallToolRequest, in createIdentityInput) (*mcp.CallToolResult, any, error) {
-	if in.Name == "" {
-		return nil, nil, fmt.Errorf("name is required")
-	}
-	if in.Type == "" {
-		return nil, nil, fmt.Errorf("type is required (Device, User, Router, or Service)")
-	}
-
 	idType := rest_model.IdentityType(in.Type)
 	body := &rest_model.IdentityCreate{
 		Name:    &in.Name,
@@ -143,16 +104,6 @@ type updateIdentityInput struct {
 }
 
 func (t *identityTools) update(ctx context.Context, _ *mcp.CallToolRequest, in updateIdentityInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-	if in.Name == "" {
-		return nil, nil, fmt.Errorf("name is required")
-	}
-	if in.Type == "" {
-		return nil, nil, fmt.Errorf("type is required (Device, User, Router, or Service)")
-	}
-
 	idType := rest_model.IdentityType(in.Type)
 	body := &rest_model.IdentityUpdate{
 		Name:    &in.Name,
@@ -175,26 +126,4 @@ func (t *identityTools) update(ctx context.Context, _ *mcp.CallToolRequest, in u
 		return nil, nil, fmt.Errorf("update identity %q: %w", in.ID, err)
 	}
 	return jsonResult(map[string]string{"status": "updated", "id": in.ID})
-}
-
-type deleteIdentityInput struct {
-	ID string `json:"id" jsonschema:"required,identity ID to delete"`
-}
-
-func (t *identityTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in deleteIdentityInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtIdentity.NewDeleteIdentityParams().WithContext(ctx).WithID(in.ID)
-	_, err = mgmt.Identity.DeleteIdentity(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("delete identity %q: %w", in.ID, err)
-	}
-	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

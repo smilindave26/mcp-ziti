@@ -18,77 +18,47 @@ func registerEnrollmentTools(s *mcp.Server, zc *ziticlient.Client) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list-enrollments",
 		Description: "List pending enrollments. Returns up to `limit` results (default 100, max 500). Use `offset` to paginate.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.list)
+		Annotations: readOnlyAnnotation,
+	}, makeListHandler(zc, "enrollments", func(ctx context.Context, mgmt *mgmtAPI, filter *string, limit, offset *int64) (any, error) {
+		params := mgmtEnroll.NewListEnrollmentsParams().WithContext(ctx).WithLimit(limit).WithOffset(offset)
+		params.Filter = filter
+		resp, err := mgmt.Enrollment.ListEnrollments(params, nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get-enrollment",
 		Description: "Get a single enrollment by ID.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.get)
+		Annotations: readOnlyAnnotation,
+	}, makeGetHandler(zc, "enrollment", func(ctx context.Context, mgmt *mgmtAPI, id string) (any, error) {
+		resp, err := mgmt.Enrollment.DetailEnrollment(
+			mgmtEnroll.NewDetailEnrollmentParams().WithContext(ctx).WithID(id), nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "create-enrollment",
 		Description: "Create a new enrollment for an identity. method must be one of: ott, ottca, updb. expiresAt is an RFC3339 timestamp (e.g. 2026-01-01T00:00:00Z).",
 	}, t.create)
 
-	destructive := true
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "delete-enrollment",
 		Description: "Delete a pending enrollment by ID.",
-		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive, IdempotentHint: true},
-	}, t.delete)
+		Annotations: destructiveAnnotation,
+	}, makeDeleteHandler(zc, "enrollment", func(ctx context.Context, mgmt *mgmtAPI, id string) error {
+		_, err := mgmt.Enrollment.DeleteEnrollment(
+			mgmtEnroll.NewDeleteEnrollmentParams().WithContext(ctx).WithID(id), nil)
+		return err
+	}))
 }
 
 type enrollmentTools struct{ zc *ziticlient.Client }
-
-type listEnrollmentsInput struct {
-	Filter string `json:"filter,omitempty" jsonschema:"optional filter expression"`
-	Limit  int64  `json:"limit,omitempty"  jsonschema:"max results to return (default 100, max 500)"`
-	Offset int64  `json:"offset,omitempty" jsonschema:"number of results to skip for pagination"`
-}
-
-func (t *enrollmentTools) list(ctx context.Context, _ *mcp.CallToolRequest, in listEnrollmentsInput) (*mcp.CallToolResult, any, error) {
-	limit, offset := clampLimit(in.Limit), in.Offset
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtEnroll.NewListEnrollmentsParams().WithContext(ctx).WithLimit(&limit).WithOffset(&offset)
-	if in.Filter != "" {
-		params.Filter = &in.Filter
-	}
-
-	resp, err := mgmt.Enrollment.ListEnrollments(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("list enrollments: %w", err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
-
-type getEnrollmentInput struct {
-	ID string `json:"id" jsonschema:"required,enrollment ID"`
-}
-
-func (t *enrollmentTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getEnrollmentInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtEnroll.NewDetailEnrollmentParams().WithContext(ctx).WithID(in.ID)
-	resp, err := mgmt.Enrollment.DetailEnrollment(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get enrollment %q: %w", in.ID, err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
 
 type createEnrollmentInput struct {
 	IdentityID string `json:"identityId" jsonschema:"required,identity ID to enroll"`
@@ -99,16 +69,6 @@ type createEnrollmentInput struct {
 }
 
 func (t *enrollmentTools) create(ctx context.Context, _ *mcp.CallToolRequest, in createEnrollmentInput) (*mcp.CallToolResult, any, error) {
-	if in.IdentityID == "" {
-		return nil, nil, fmt.Errorf("identityId is required")
-	}
-	if in.Method == "" {
-		return nil, nil, fmt.Errorf("method is required (ott, ottca, or updb)")
-	}
-	if in.ExpiresAt == "" {
-		return nil, nil, fmt.Errorf("expiresAt is required (RFC3339 timestamp)")
-	}
-
 	ts, err := time.Parse(time.RFC3339, in.ExpiresAt)
 	if err != nil {
 		return nil, nil, fmt.Errorf("expiresAt must be RFC3339 format: %w", err)
@@ -139,26 +99,4 @@ func (t *enrollmentTools) create(ctx context.Context, _ *mcp.CallToolRequest, in
 		return nil, nil, fmt.Errorf("create enrollment: %w", err)
 	}
 	return jsonResult(resp.GetPayload().Data)
-}
-
-type deleteEnrollmentInput struct {
-	ID string `json:"id" jsonschema:"required,enrollment ID to delete"`
-}
-
-func (t *enrollmentTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in deleteEnrollmentInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtEnroll.NewDeleteEnrollmentParams().WithContext(ctx).WithID(in.ID)
-	_, err = mgmt.Enrollment.DeleteEnrollment(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("delete enrollment %q: %w", in.ID, err)
-	}
-	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }

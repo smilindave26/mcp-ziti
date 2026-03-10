@@ -12,19 +12,33 @@ import (
 
 func registerEdgeRouterPolicyTools(s *mcp.Server, zc *ziticlient.Client) {
 	t := &edgeRouterPolicyTools{zc: zc}
-	destructive := true
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list-edge-router-policies",
 		Description: "List edge router policies. Returns up to `limit` results (default 100, max 500). Use `offset` to paginate.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.list)
+		Annotations: readOnlyAnnotation,
+	}, makeListHandler(zc, "edge router policies", func(ctx context.Context, mgmt *mgmtAPI, filter *string, limit, offset *int64) (any, error) {
+		params := mgmtERP.NewListEdgeRouterPoliciesParams().WithContext(ctx).WithLimit(limit).WithOffset(offset)
+		params.Filter = filter
+		resp, err := mgmt.EdgeRouterPolicy.ListEdgeRouterPolicies(params, nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get-edge-router-policy",
 		Description: "Get a single edge router policy by ID.",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
-	}, t.get)
+		Annotations: readOnlyAnnotation,
+	}, makeGetHandler(zc, "edge router policy", func(ctx context.Context, mgmt *mgmtAPI, id string) (any, error) {
+		resp, err := mgmt.EdgeRouterPolicy.DetailEdgeRouterPolicy(
+			mgmtERP.NewDetailEdgeRouterPolicyParams().WithContext(ctx).WithID(id), nil)
+		if err != nil {
+			return nil, err
+		}
+		return resp.GetPayload().Data, nil
+	}))
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "create-edge-router-policy",
@@ -34,61 +48,15 @@ func registerEdgeRouterPolicyTools(s *mcp.Server, zc *ziticlient.Client) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "delete-edge-router-policy",
 		Description: "Permanently delete an edge router policy by ID.",
-		Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive, IdempotentHint: true},
-	}, t.delete)
+		Annotations: destructiveAnnotation,
+	}, makeDeleteHandler(zc, "edge router policy", func(ctx context.Context, mgmt *mgmtAPI, id string) error {
+		_, err := mgmt.EdgeRouterPolicy.DeleteEdgeRouterPolicy(
+			mgmtERP.NewDeleteEdgeRouterPolicyParams().WithContext(ctx).WithID(id), nil)
+		return err
+	}))
 }
 
 type edgeRouterPolicyTools struct{ zc *ziticlient.Client }
-
-type listEdgeRouterPoliciesInput struct {
-	Filter string `json:"filter,omitempty" jsonschema:"optional filter expression"`
-	Limit  int64  `json:"limit,omitempty"  jsonschema:"max results to return (default 100, max 500)"`
-	Offset int64  `json:"offset,omitempty" jsonschema:"number of results to skip for pagination"`
-}
-
-func (t *edgeRouterPolicyTools) list(ctx context.Context, _ *mcp.CallToolRequest, in listEdgeRouterPoliciesInput) (*mcp.CallToolResult, any, error) {
-	limit, offset := clampLimit(in.Limit), in.Offset
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtERP.NewListEdgeRouterPoliciesParams().WithContext(ctx)
-	params.Limit = &limit
-	params.Offset = &offset
-	if in.Filter != "" {
-		params.Filter = &in.Filter
-	}
-
-	resp, err := mgmt.EdgeRouterPolicy.ListEdgeRouterPolicies(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("list edge router policies: %w", err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
-
-type getEdgeRouterPolicyInput struct {
-	ID string `json:"id" jsonschema:"required,edge router policy ID"`
-}
-
-func (t *edgeRouterPolicyTools) get(ctx context.Context, _ *mcp.CallToolRequest, in getEdgeRouterPolicyInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtERP.NewDetailEdgeRouterPolicyParams().WithContext(ctx).WithID(in.ID)
-	resp, err := mgmt.EdgeRouterPolicy.DetailEdgeRouterPolicy(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get edge router policy %q: %w", in.ID, err)
-	}
-	return jsonResult(resp.GetPayload().Data)
-}
 
 type createEdgeRouterPolicyInput struct {
 	Name            string   `json:"name"                       jsonschema:"required,policy name"`
@@ -98,13 +66,6 @@ type createEdgeRouterPolicyInput struct {
 }
 
 func (t *edgeRouterPolicyTools) create(ctx context.Context, _ *mcp.CallToolRequest, in createEdgeRouterPolicyInput) (*mcp.CallToolResult, any, error) {
-	if in.Name == "" {
-		return nil, nil, fmt.Errorf("name is required")
-	}
-	if in.Semantic == "" {
-		return nil, nil, fmt.Errorf("semantic is required (AllOf or AnyOf)")
-	}
-
 	semantic := rest_model.Semantic(in.Semantic)
 	body := &rest_model.EdgeRouterPolicyCreate{
 		Name:            &in.Name,
@@ -124,26 +85,4 @@ func (t *edgeRouterPolicyTools) create(ctx context.Context, _ *mcp.CallToolReque
 		return nil, nil, fmt.Errorf("create edge router policy: %w", err)
 	}
 	return jsonResult(resp.GetPayload().Data)
-}
-
-type deleteEdgeRouterPolicyInput struct {
-	ID string `json:"id" jsonschema:"required,edge router policy ID to delete"`
-}
-
-func (t *edgeRouterPolicyTools) delete(ctx context.Context, _ *mcp.CallToolRequest, in deleteEdgeRouterPolicyInput) (*mcp.CallToolResult, any, error) {
-	if in.ID == "" {
-		return nil, nil, fmt.Errorf("id is required")
-	}
-
-	mgmt, err := t.zc.Mgmt()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	params := mgmtERP.NewDeleteEdgeRouterPolicyParams().WithContext(ctx).WithID(in.ID)
-	_, err = mgmt.EdgeRouterPolicy.DeleteEdgeRouterPolicy(params, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("delete edge router policy %q: %w", in.ID, err)
-	}
-	return jsonResult(map[string]string{"status": "deleted", "id": in.ID})
 }
