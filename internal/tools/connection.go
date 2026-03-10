@@ -17,6 +17,12 @@ import (
 	"github.com/netfoundry/mcp-ziti-golang/internal/ziticlient"
 )
 
+const (
+	// Default fallbacks for device authorization responses that omit these fields.
+	defaultPollingIntervalSecs  = 5
+	defaultDeviceCodeExpirySecs = 300
+)
+
 func registerConnectionTools(s *mcp.Server, zc *ziticlient.Client, cfg *config.Config) {
 	t := &connectionTools{zc: zc, cfg: cfg}
 
@@ -242,16 +248,14 @@ func (t *connectionTools) startOIDCLogin(_ context.Context, _ *mcp.CallToolReque
 		return nil, nil, fmt.Errorf("device authorization response missing device_code or user_code")
 	}
 
-	// Default polling interval to 5 seconds if not specified
 	interval := deviceResp.Interval
 	if interval <= 0 {
-		interval = 5
+		interval = defaultPollingIntervalSecs
 	}
 
-	// Default expiry to 5 minutes if not specified
 	expiresIn := deviceResp.ExpiresIn
 	if expiresIn <= 0 {
-		expiresIn = 300
+		expiresIn = defaultDeviceCodeExpirySecs
 	}
 
 	// Store state for complete-oidc-login
@@ -268,31 +272,24 @@ func (t *connectionTools) startOIDCLogin(_ context.Context, _ *mcp.CallToolReque
 	t.mu.Unlock()
 
 	// Build the user-facing message
-	verificationURL := deviceResp.VerificationURIComplete
-	if verificationURL == "" {
+	var codeStep string
+	var verificationURL string
+	if deviceResp.VerificationURIComplete != "" {
+		verificationURL = deviceResp.VerificationURIComplete
+		codeStep = fmt.Sprintf("   (The code **%s** is pre-filled in the URL)\n", deviceResp.UserCode)
+	} else {
 		verificationURL = deviceResp.VerificationURI
+		codeStep = fmt.Sprintf("2. Enter this code when prompted: **%s**\n", deviceResp.UserCode)
 	}
 
 	message := fmt.Sprintf(
 		"OIDC device login initiated. Please ask the user to:\n\n"+
 			"1. Open this URL in their browser: %s\n"+
-			"2. Enter this code when prompted: **%s**\n"+
+			"%s"+
 			"3. Complete authentication with the identity provider\n\n"+
 			"After the user completes authentication, call complete-oidc-login to finish connecting.\n"+
 			"The code expires in %d seconds.",
-		verificationURL, deviceResp.UserCode, expiresIn)
-
-	// If we have the complete URI, simplify the instructions
-	if deviceResp.VerificationURIComplete != "" {
-		message = fmt.Sprintf(
-			"OIDC device login initiated. Please ask the user to:\n\n"+
-				"1. Open this URL in their browser: %s\n"+
-				"   (The code **%s** is pre-filled in the URL)\n"+
-				"2. Complete authentication with the identity provider\n\n"+
-				"After the user completes authentication, call complete-oidc-login to finish connecting.\n"+
-				"The code expires in %d seconds.",
-			deviceResp.VerificationURIComplete, deviceResp.UserCode, expiresIn)
-	}
+		verificationURL, codeStep, expiresIn)
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
