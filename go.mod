@@ -7,6 +7,7 @@ require (
 	github.com/go-openapi/strfmt v0.25.0
 	github.com/modelcontextprotocol/go-sdk v1.4.0
 	github.com/openziti/edge-api v0.26.56
+	github.com/openziti/fabric v0.24.46
 	golang.org/x/oauth2 v0.35.0
 )
 

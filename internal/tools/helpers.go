@@ -8,11 +8,14 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/netfoundry/mcp-ziti-golang/internal/ziticlient"
 	mgmtClient "github.com/openziti/edge-api/rest_management_api_client"
+	mgmtConfig "github.com/openziti/edge-api/rest_management_api_client/config"
 	mgmtER "github.com/openziti/edge-api/rest_management_api_client/edge_router"
 	mgmtERP "github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
 	mgmtIdentity "github.com/openziti/edge-api/rest_management_api_client/identity"
 	mgmtService "github.com/openziti/edge-api/rest_management_api_client/service"
+	mgmtSERP "github.com/openziti/edge-api/rest_management_api_client/service_edge_router_policy"
 	mgmtServicePolicy "github.com/openziti/edge-api/rest_management_api_client/service_policy"
+	mgmtTerminator "github.com/openziti/edge-api/rest_management_api_client/terminator"
 )
 
 const (
@@ -194,4 +197,16 @@ func newERPCountParams(ctx context.Context, offset, limit *int64) *mgmtERP.ListE
 
 func newERCountParams(ctx context.Context, offset, limit *int64) *mgmtER.ListEdgeRoutersParams {
 	return mgmtER.NewListEdgeRoutersParams().WithContext(ctx).WithLimit(limit).WithOffset(offset)
+}
+
+func newSERPCountParams(ctx context.Context, offset, limit *int64) *mgmtSERP.ListServiceEdgeRouterPoliciesParams {
+	return mgmtSERP.NewListServiceEdgeRouterPoliciesParams().WithContext(ctx).WithLimit(limit).WithOffset(offset)
+}
+
+func newTermCountParams(ctx context.Context, offset, limit *int64) *mgmtTerminator.ListTerminatorsParams {
+	return mgmtTerminator.NewListTerminatorsParams().WithContext(ctx).WithLimit(limit).WithOffset(offset)
+}
+
+func newConfigCountParams(ctx context.Context, offset, limit *int64) *mgmtConfig.ListConfigsParams {
+	return mgmtConfig.NewListConfigsParams().WithContext(ctx).WithLimit(limit).WithOffset(offset)
 }

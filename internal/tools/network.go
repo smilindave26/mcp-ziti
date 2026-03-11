@@ -2,10 +2,12 @@ package tools
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/netfoundry/mcp-ziti-golang/internal/ziticlient"
+	fabricCircuit "github.com/openziti/fabric/controller/rest_client/circuit"
 	mgmtInfo "github.com/openziti/edge-api/rest_management_api_client/informational"
 )
 
@@ -20,8 +22,8 @@ func registerNetworkTools(s *mcp.Server, zc *ziticlient.Client) {
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list-summary",
-		Description: "Get a count summary of all resource types in the Ziti network (identities, services, policies, edge routers).",
-		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
+		Description: "Get a count summary of all resource types in the Ziti network. Includes circuits if the fabric API is available.",
+		Annotations: readOnlyAnnotation,
 	}, t.summary)
 }
 
@@ -42,11 +44,15 @@ func (t *networkTools) version(ctx context.Context, _ *mcp.CallToolRequest, _ st
 }
 
 type summaryResult struct {
-	Identities        int64 `json:"identities"`
-	Services          int64 `json:"services"`
-	ServicePolicies   int64 `json:"servicePolicies"`
-	EdgeRouterPolicies int64 `json:"edgeRouterPolicies"`
-	EdgeRouters       int64 `json:"edgeRouters"`
+	Identities                 int64 `json:"identities"`
+	Services                   int64 `json:"services"`
+	ServicePolicies            int64 `json:"servicePolicies"`
+	EdgeRouterPolicies         int64 `json:"edgeRouterPolicies"`
+	ServiceEdgeRouterPolicies  int64 `json:"serviceEdgeRouterPolicies"`
+	EdgeRouters                int64 `json:"edgeRouters"`
+	Terminators                int64 `json:"terminators"`
+	Configs                    int64 `json:"configs"`
+	Circuits                   *int  `json:"circuits,omitempty"`
 }
 
 func (t *networkTools) summary(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
@@ -97,6 +103,15 @@ func (t *networkTools) summary(ctx context.Context, _ *mcp.CallToolRequest, _ st
 		result.EdgeRouterPolicies = *erpResp.GetPayload().Meta.Pagination.TotalCount
 	}
 
+	serpResp, err := mgmt.ServiceEdgeRouterPolicy.ListServiceEdgeRouterPolicies(
+		newSERPCountParams(ctx, &zero, &one), nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("counting service edge router policies: %w", err)
+	}
+	if serpResp.GetPayload().Meta.Pagination != nil {
+		result.ServiceEdgeRouterPolicies = *serpResp.GetPayload().Meta.Pagination.TotalCount
+	}
+
 	erResp, err := mgmt.EdgeRouter.ListEdgeRouters(
 		newERCountParams(ctx, &zero, &one), nil)
 	if err != nil {
@@ -104,6 +119,37 @@ func (t *networkTools) summary(ctx context.Context, _ *mcp.CallToolRequest, _ st
 	}
 	if erResp.GetPayload().Meta.Pagination != nil {
 		result.EdgeRouters = *erResp.GetPayload().Meta.Pagination.TotalCount
+	}
+
+	termResp, err := mgmt.Terminator.ListTerminators(
+		newTermCountParams(ctx, &zero, &one), nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("counting terminators: %w", err)
+	}
+	if termResp.GetPayload().Meta.Pagination != nil {
+		result.Terminators = *termResp.GetPayload().Meta.Pagination.TotalCount
+	}
+
+	cfgResp, err := mgmt.Config.ListConfigs(
+		newConfigCountParams(ctx, &zero, &one), nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("counting configs: %w", err)
+	}
+	if cfgResp.GetPayload().Meta.Pagination != nil {
+		result.Configs = *cfgResp.GetPayload().Meta.Pagination.TotalCount
+	}
+
+	// Include circuit count if the fabric API is available.
+	fabric, err := t.zc.Fabric()
+	if err == nil {
+		circResp, err := fabric.Circuit.ListCircuits(
+			fabricCircuit.NewListCircuitsParams().WithContext(ctx))
+		if err == nil {
+			count := len(circResp.GetPayload().Data)
+			result.Circuits = &count
+		}
+	} else if !errors.Is(err, ziticlient.ErrFabricNotAvailable) {
+		return nil, nil, err
 	}
 
 	return jsonResult(result)

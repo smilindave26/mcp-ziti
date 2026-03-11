@@ -443,28 +443,38 @@ func (t *connectionTools) statusResult() (*mcp.CallToolResult, any, error) {
 		data["edgeApiModule"] = info.EdgeAPIModule
 		data["compatible"] = info.Compatible
 		data["compatibilityNote"] = info.CompatibilityNote
+		data["fabricApiAvailable"] = info.FabricAPIAvailable
+
+		fabricLine := "Fabric API: NOT AVAILABLE (circuit and cluster tools will not work)"
+		if info.FabricAPIAvailable {
+			fabricLine = "Fabric API: AVAILABLE (circuit and cluster tools enabled)"
+		}
 
 		if info.Compatible {
 			summary = fmt.Sprintf(
 				"Connected to controller %s at %s.\n\n"+
 					"API Compatibility: COMPATIBLE\n"+
 					"  This tool uses: %s (edge-api %s)\n"+
-					"  Controller supports: %s\n\n"+
+					"  Controller supports: %s\n"+
+					"  %s\n\n"+
 					"Note: %s",
 				info.ControllerVersion, t.zc.ControllerURL(),
 				info.ThisToolBuiltFor, info.EdgeAPIModule,
 				info.ThisToolBuiltFor,
+				fabricLine,
 				info.CompatibilityNote)
 		} else {
 			summary = fmt.Sprintf(
 				"Connected to controller %s at %s.\n\n"+
 					"API Compatibility: NOT COMPATIBLE — OPERATIONS MAY FAIL\n"+
 					"  This tool uses: %s (edge-api %s)\n"+
-					"  Controller does NOT advertise %s\n\n"+
+					"  Controller does NOT advertise %s\n"+
+					"  %s\n\n"+
 					"Warning: %s",
 				info.ControllerVersion, t.zc.ControllerURL(),
 				info.ThisToolBuiltFor, info.EdgeAPIModule,
 				info.ThisToolBuiltFor,
+				fabricLine,
 				info.CompatibilityNote)
 		}
 	} else if !t.zc.Connected() {

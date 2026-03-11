@@ -30,4 +30,6 @@ func RegisterAll(s *mcp.Server, zc *ziticlient.Client, cfg *config.Config) {
 	registerDatabaseTools(s, zc)
 	registerControllerTools(s, zc)
 	registerRoleAttributeTools(s, zc)
+	registerCircuitTools(s, zc)
+	registerClusterTools(s, zc)
 }

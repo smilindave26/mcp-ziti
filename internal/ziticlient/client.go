@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
 
+	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/netfoundry/mcp-ziti-golang/internal/auth"
 	"github.com/netfoundry/mcp-ziti-golang/internal/config"
+	fabric_rest_client "github.com/openziti/fabric/controller/rest_client"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	mgmtInfo "github.com/openziti/edge-api/rest_management_api_client/informational"
 	"github.com/openziti/edge-api/rest_util"
@@ -21,6 +24,9 @@ const (
 
 	// RequiredAPIPath is the management API path this client was built against.
 	RequiredAPIPath = "/edge/management/v1"
+
+	// FabricAPIPath is the fabric API path used for circuit and cluster operations.
+	FabricAPIPath = "/fabric/v1"
 
 	// EdgeAPIVersion is the version of the edge-api Go module used by this client.
 	EdgeAPIVersion = "v0.26.56"
@@ -36,14 +42,15 @@ type APIVersionEntry struct {
 
 // VersionInfo holds the controller version and API compatibility assessment.
 type VersionInfo struct {
-	ControllerVersion  string            `json:"controllerVersion"`
-	BuildDate          string            `json:"buildDate,omitempty"`
-	RuntimeVersion     string            `json:"runtimeVersion,omitempty"`
-	APIVersions        []APIVersionEntry `json:"controllerAPIVersions"`
-	ThisToolBuiltFor   string            `json:"thisToolBuiltFor"`
-	EdgeAPIModule      string            `json:"edgeApiModule"`
-	Compatible         bool              `json:"compatible"`
-	CompatibilityNote  string            `json:"compatibilityNote"`
+	ControllerVersion   string            `json:"controllerVersion"`
+	BuildDate           string            `json:"buildDate,omitempty"`
+	RuntimeVersion      string            `json:"runtimeVersion,omitempty"`
+	APIVersions         []APIVersionEntry `json:"controllerAPIVersions"`
+	ThisToolBuiltFor    string            `json:"thisToolBuiltFor"`
+	EdgeAPIModule       string            `json:"edgeApiModule"`
+	Compatible          bool              `json:"compatible"`
+	CompatibilityNote   string            `json:"compatibilityNote"`
+	FabricAPIAvailable  bool              `json:"fabricApiAvailable"`
 }
 
 // ErrNotConnected is returned by Mgmt() when the client has no active controller connection.
@@ -56,6 +63,9 @@ type Client struct {
 	authenticator rest_util.Authenticator
 	ctrlURL       *url.URL
 	mgmt          *rest_management_api_client.ZitiEdgeManagement
+	fabric        *fabric_rest_client.ZitiFabric
+	httpClient    *http.Client
+	sessionToken  string
 	expiresAt     time.Time
 	connected     bool
 	versionInfo   *VersionInfo
@@ -182,6 +192,9 @@ func (c *Client) Disconnect() error {
 	c.authenticator = nil
 	c.ctrlURL = nil
 	c.mgmt = nil
+	c.fabric = nil
+	c.httpClient = nil
+	c.sessionToken = ""
 	c.expiresAt = time.Time{}
 	c.connected = false
 	c.versionInfo = nil
@@ -231,6 +244,7 @@ func (c *Client) fetchAndLogVersionInfo() {
 	slog.Info("controller version info",
 		"controllerVersion", info.ControllerVersion,
 		"compatible", info.Compatible,
+		"fabricApiAvailable", info.FabricAPIAvailable,
 		"thisToolBuiltFor", info.ThisToolBuiltFor,
 		"edgeApiModule", info.EdgeAPIModule,
 	)
@@ -274,6 +288,9 @@ func (c *Client) fetchVersionInfo() (*VersionInfo, error) {
 				entry.Path = *apiVer.Path
 				if *apiVer.Path == RequiredAPIPath {
 					info.Compatible = true
+				}
+				if *apiVer.Path == FabricAPIPath {
+					info.FabricAPIAvailable = true
 				}
 			}
 			info.APIVersions = append(info.APIVersions, entry)
@@ -319,6 +336,33 @@ func (c *Client) Mgmt() (*rest_management_api_client.ZitiEdgeManagement, error) 
 	return c.mgmt, nil
 }
 
+// ErrFabricNotAvailable is returned by Fabric() when the controller does not expose the fabric API.
+var ErrFabricNotAvailable = errors.New("fabric API not available on this controller")
+
+// Fabric returns the fabric API client, refreshing the session if needed.
+// Returns ErrFabricNotAvailable if the controller does not expose /fabric/v1.
+func (c *Client) Fabric() (*fabric_rest_client.ZitiFabric, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if !c.connected {
+		return nil, ErrNotConnected
+	}
+
+	if c.versionInfo != nil && !c.versionInfo.FabricAPIAvailable {
+		return nil, ErrFabricNotAvailable
+	}
+
+	if time.Until(c.expiresAt) < refreshWindow {
+		slog.Info("session token near expiry, refreshing", "expiresAt", c.expiresAt)
+		if err := c.authenticate(); err != nil {
+			return nil, fmt.Errorf("session refresh failed: %w", err)
+		}
+	}
+
+	return c.fabric, nil
+}
+
 // authenticate performs a fresh authentication against the controller and
 // stores the new management client and session expiry.
 // Must be called with c.mu held (or during construction before the client is shared).
@@ -343,6 +387,18 @@ func (c *Client) authenticate() error {
 	}
 
 	c.mgmt = mgmt
+	c.httpClient = httpClient
+	c.sessionToken = *session.Token
+
+	// Create fabric client using the same HTTP client and auth token.
+	fabricTransport := httptransport.NewWithClient(
+		c.ctrlURL.Host,
+		fabric_rest_client.DefaultBasePath,
+		fabric_rest_client.DefaultSchemes,
+		httpClient,
+	)
+	fabricTransport.DefaultAuthentication = &rest_util.ZitiTokenAuth{Token: *session.Token}
+	c.fabric = fabric_rest_client.New(fabricTransport, nil)
 
 	// Record session expiry for refresh logic
 	if session.ExpiresAt != nil {
