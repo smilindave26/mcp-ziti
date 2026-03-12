@@ -314,6 +314,19 @@ ziti-mcp --controller https://ctrl.example.com:1280 \
 
 The server communicates over STDIO. Configure it as an MCP server in your agent's settings by pointing to the binary and passing your preferred authentication flags.
 
+> **Windows users:** JSON requires backslashes to be escaped as `\\`. Use double backslashes in all file paths:
+>
+> ```json
+> {
+>   "mcpServers": {
+>     "ziti": {
+>       "command": "C:\\Users\\you\\ziti-mcp.exe",
+>       "args": ["--identity-file", "C:\\Users\\you\\.ziti\\identity.json"]
+>     }
+>   }
+> }
+> ```
+
 You can also start the server **with no credentials at all** — the agent can then connect to any controller at runtime using the `connect-controller` tool:
 
 ```json
