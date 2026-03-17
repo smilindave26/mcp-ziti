@@ -9,7 +9,8 @@ Pre-built binaries for macOS, Linux, and Windows are available on the [GitHub Re
 
 ```bash
 # Example: macOS Apple Silicon
-curl -sL https://github.com/smilindave26/mcp-ziti/releases/latest/download/ziti-mcp_$(curl -sL https://api.github.com/repos/smilindave26/mcp-ziti/releases/latest | grep tag_name | cut -d'"' -f4 | sed 's/^v//')_darwin_arm64.tar.gz | tar xz
+ZMCP_VER="$(curl -sL https://api.github.com/repos/smilindave26/mcp-ziti/releases/latest | sed -n '/tag_name/s/.*v\([0-9]*\.[0-9]*\.[0-9]*\).*/\1/p')"
+curl -sL "https://github.com/smilindave26/mcp-ziti/releases/download/v${ZMCP_VER}/mcp-ziti_${ZMCP_VER}_darwin_arm64.tar.gz" | tar xz ziti-mcp
 sudo mv ziti-mcp /usr/local/bin/
 ```
 
